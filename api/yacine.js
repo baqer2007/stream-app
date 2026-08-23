@@ -1,55 +1,60 @@
 import zlib from 'zlib';
 
-function solveAndDecrypt(cipherBytes) {
-  // المفاتيح المحتملة استناداً إلى بايتات البداية
-  const knownPrefixes = [
-    '{"status":',
-    '{"channels":',
-    '{"data":',
-    '{"categories":',
-    '{"live":'
-  ];
+const KNOWN_KEYS = [
+  "fik@4!895.21?h*r",
+  "yacinetvkey12345",
+  "yacinetv",
+  "1234567890123456",
+  "com.ytv.player"
+];
 
-  for (const prefix of knownPrefixes) {
-    const keyLen = 16;
-    const derivedKey = Buffer.alloc(Math.min(keyLen, prefix.length));
+function tryBruteDecode(rawBytes) {
+  // تجربة تخطي بايتات الرأس (من 0 إلى 16 بايت) مع جميع المفاتيح
+  for (let offset = 0; offset <= 16; offset++) {
+    const slice = rawBytes.subarray(offset);
     
-    for (let i = 0; i < derivedKey.length; i++) {
-      derivedKey[i] = cipherBytes[i] ^ prefix.charCodeAt(i);
-    }
+    for (const keyStr of KNOWN_KEYS) {
+      const key = Buffer.from(keyStr, 'utf-8');
+      const out = Buffer.alloc(slice.length);
+      
+      for (let i = 0; i < slice.length; i++) {
+        out[i] = slice[i] ^ key[i % key.length];
+      }
 
-    // تجربة فك النص بالمفتاح المستنتج
-    const out = Buffer.alloc(cipherBytes.length);
-    for (let i = 0; i < cipherBytes.length; i++) {
-      out[i] = cipherBytes[i] ^ derivedKey[i % derivedKey.length];
+      const text = out.toString('utf-8');
+      if (text.includes('{') && text.includes('}')) {
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}') + 1;
+        try {
+          const parsed = JSON.parse(text.substring(start, end));
+          return { success: true, offset, key: keyStr, data: parsed };
+        } catch (e) {}
+      }
     }
+  }
 
+  // تجربة البحث التلقائي عن مفتاح دوري (Rolling XOR Key Search)
+  for (let offset = 0; offset < 8; offset++) {
+    const slice = rawBytes.subarray(offset);
+    // بافتراض البداية {"
+    const k0 = slice[0] ^ 0x7B;
+    const k1 = slice[1] ^ 0x22;
+    
+    const testKey = Buffer.from([k0, k1]);
+    const out = Buffer.alloc(slice.length);
+    for (let i = 0; i < slice.length; i++) {
+      out[i] = slice[i] ^ testKey[i % testKey.length];
+    }
     const text = out.toString('utf-8');
-    try {
+    if (text.includes('{') && text.includes('}')) {
       const start = text.indexOf('{');
       const end = text.lastIndexOf('}') + 1;
-      if (start !== -1 && end !== -1) {
-        const json = JSON.parse(text.substring(start, end));
-        return { success: true, data: json };
-      }
-    } catch (e) {}
-  }
-
-  // محاولة الفك بمفتاح ثابت متعدد البايتات
-  const customKey = Buffer.from([0x63, 0x21, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74]);
-  const out2 = Buffer.alloc(cipherBytes.length);
-  for (let i = 0; i < cipherBytes.length; i++) {
-    out2[i] = cipherBytes[i] ^ customKey[i % customKey.length];
-  }
-  
-  try {
-    const text2 = out2.toString('utf-8');
-    const start2 = text2.indexOf('{');
-    const end2 = text2.lastIndexOf('}') + 1;
-    if (start2 !== -1 && end2 !== -1) {
-      return { success: true, data: JSON.parse(text2.substring(start2, end2)) };
+      try {
+        const parsed = JSON.parse(text.substring(start, end));
+        return { success: true, offset, key: testKey.toString('hex'), data: parsed };
+      } catch (e) {}
     }
-  } catch (e) {}
+  }
 
   return { success: false };
 }
@@ -76,20 +81,20 @@ export default async function handler(req, res) {
     }
 
     const rawCipherBytes = Buffer.from(textPayload.trim(), 'base64');
-    const result = solveAndDecrypt(rawCipherBytes);
+    const result = tryBruteDecode(rawCipherBytes);
 
     if (result.success) {
       return res.status(200).json({
         status: "success",
+        matched_offset: result.offset,
+        matched_key: result.key,
         data: result.data
       });
     }
 
-    // إرجاع أول 64 بايت لتحليل المفتاح بدقة إن لزم
-    const hexDump = rawCipherBytes.subarray(0, 32).toString('hex');
-    return res.status(200).json({
-      status: "key_extracting",
-      header_hex: hexDump
+    return res.status(500).json({
+      status: "error",
+      message: "لم يتمكن من فك التشفير تلقائياً"
     });
 
   } catch (error) {
