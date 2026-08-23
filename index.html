@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LIVE SPORT TV</title>
+  <title>بث القنوات الرياضية المباشرة</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
   <style>
     * {
@@ -123,21 +123,15 @@
     </div>
 
     <div class="channels-list">
-      <!-- سيرفر 1 الملتقط -->
-      <button class="channel-item active" onclick="playChannel('/api/stream?url=' + encodeURIComponent('http://h27.vidcloudy.online/0021012254/31009988005/index.m3u8'), 'قناة البث الرياضية المباشرة (سيرفر 1)', this)">
-        <span>قناة البث المباشر - سيرفر 1</span>
+      <!-- القناة 1 (المعرف 6123) -->
+      <button class="channel-item active" onclick="playChannel('/api/stream?url=' + encodeURIComponent('http://213.183.40.59/iptv/8DNEYEKGDK3SKVGLNPWNEP9Q/6123/mono.m3u8'), 'قناة beIN Sports 1 HD', this)">
+        <span>beIN Sports 1 HD</span>
         <span>◀</span>
       </button>
 
-      <!-- سيرفر 2 الملتقط -->
-      <button class="channel-item" onclick="playChannel('/api/stream?url=' + encodeURIComponent('http://h34.veyratech.buzz/0021012254/978480008877005/index.m3u8'), 'قناة البث الرياضية المباشرة (سيرفر 2)', this)">
-        <span>قناة البث المباشر - سيرفر 2</span>
-        <span>◀</span>
-      </button>
-
-      <!-- بث احتياطي دائم -->
-      <button class="channel-item" onclick="playChannel('https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8', 'قناة Red Bull TV الرياضية المباشرة', this)">
-        <span>قناة Red Bull TV المباشرة</span>
+      <!-- القناة 2 (المعرف 6131) -->
+      <button class="channel-item" onclick="playChannel('/api/stream?url=' + encodeURIComponent('http://5.182.228.251/iptv/8DNEYEKGDK3SKVGLNPWNEP9Q/6131/mono.m3u8'), 'قناة beIN Sports 2 HD', this)">
+        <span>beIN Sports 2 HD</span>
         <span>◀</span>
       </button>
     </div>
@@ -166,23 +160,24 @@
         hls.loadSource(url);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          statusText.innerText = "يعمل الآن: " + name;
           video.play().catch(e => console.log("Autoplay blocked:", e));
         });
         hls.on(Hls.Events.ERROR, (event, data) => {
           if (data.fatal) {
             console.error("HLS Error:", data);
-            statusText.innerText = "خطأ في تشغيل السيرفر، جرب سيرفر آخر";
+            statusText.innerText = "خطأ في الاتصال بالسيرفر";
           }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = url;
         video.addEventListener('loadedmetadata', () => {
+          statusText.innerText = "يعمل الآن: " + name;
           video.play().catch(() => {});
         });
       }
     }
 
-    // تشغيل القناة الأولى افتراضياً عند فتح الصفحة
     document.addEventListener('DOMContentLoaded', () => {
       const activeBtn = document.querySelector('.channel-item.active');
       if (activeBtn) {
