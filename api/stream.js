@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
   const { url } = req.query;
   if (!url) {
-    return res.status(400).json({ error: "Missing url parameter" });
+    return res.status(400).send("Missing url");
   }
 
   try {
@@ -22,29 +22,37 @@ export default async function handler(req, res) {
       }
     });
 
-    const contentType = response.headers.get("content-type") || "";
-    
-    // إذا كان الطلب لقائمة تشغيل m3u8
-    if (targetUrl.includes(".m3u8") || contentType.includes("mpegurl")) {
-      let m3u8Text = await response.text();
+    // استخراج معلمات التوكن من الرابط الأساسي
+    const parsedUrl = new URL(targetUrl);
+    const queryParams = parsedUrl.search; // يتضمن ?t=...&e=...
+
+    if (targetUrl.includes(".m3u8")) {
+      const m3u8Text = await response.text();
       const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
 
-      // إعادة توجيه أجزاء الفيديو عبر نفس البروكسي الداخلي
-      m3u8Text = m3u8Text.replace(/^(?!#)(?!\s*$)(.+)$/gm, (match) => {
-        const fullSegmentUrl = match.startsWith("http") ? match : baseUrl + match;
+      // إعادة كتابة مسار المقاطع مع التوكن والبروكسي
+      const modifiedM3u8 = m3u8Text.replace(/^(?!#)(?!\s*$)(.+)$/gm, (line) => {
+        const cleanLine = line.trim();
+        let fullSegmentUrl = cleanLine.startsWith("http") ? cleanLine : baseUrl + cleanLine;
+        
+        // إرفاق التوكن بالمقطع إذا لم يكن موجوداً
+        if (queryParams && !fullSegmentUrl.includes("?")) {
+          fullSegmentUrl += queryParams;
+        }
+
         return `/api/stream?url=${encodeURIComponent(fullSegmentUrl)}`;
       });
 
       res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-      return res.status(200).send(m3u8Text);
+      return res.status(200).send(modifiedM3u8);
     }
 
-    // إذا كان مقطع فيديو (ts أو pdf مموه)
+    // تمرير أجزاء الفيديو (.pdf / .ts)
     const arrayBuffer = await response.arrayBuffer();
-    res.setHeader("Content-Type", contentType || "video/mp2t");
+    res.setHeader("Content-Type", "video/mp2t");
     return res.status(200).send(Buffer.from(arrayBuffer));
 
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).send(error.message);
   }
 }
