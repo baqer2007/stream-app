@@ -1,73 +1,63 @@
-import crypto from 'crypto';
 import zlib from 'zlib';
 
-function exhaustiveAesDecrypt(cipherBytes, headerT) {
-  const tStr = String(headerT || "1787484688");
-  const knownKeys = [
-    "fik@4!895.21?h*r",
-    "yacinetvkey12345",
-    "1234567890123456",
-    "com.ytv.player",
-    "yacinetv",
-    "9584726194827163"
+function autoSolveYacineStream(cipherBuffer) {
+  // تجربة فك الشفرة بالاستنتاج التلقائي لهيكل كائنات JSON
+  const targetPrefixes = [
+    '{"id":',
+    '{"status":',
+    '{"name":',
+    '{"channel":',
+    '{"success":',
+    '{"data":'
   ];
 
-  const generatedKeys = [];
+  for (const prefix of targetPrefixes) {
+    const key = Buffer.alloc(prefix.length);
+    for (let i = 0; i < prefix.length; i++) {
+      key[i] = cipherBuffer[i] ^ prefix.charCodeAt(i);
+    }
 
-  for (const k of knownKeys) {
-    generatedKeys.push(Buffer.from(k.padEnd(16, '0').slice(0, 16), 'utf-8'));
-    generatedKeys.push(crypto.createHash('md5').update(k).digest());
-    generatedKeys.push(crypto.createHash('md5').update(k + tStr).digest());
-    generatedKeys.push(crypto.createHash('md5').update(tStr + k).digest());
+    // تجربة أطوال مفاتيح دورية مختلفة (من طول المفتاح المكتشف حتى 32)
+    for (let kLen = 4; kLen <= key.length; kLen++) {
+      const subKey = key.subarray(0, kLen);
+      const out = Buffer.alloc(cipherBuffer.length);
+      for (let j = 0; j < cipherBuffer.length; j++) {
+        out[j] = cipherBuffer[j] ^ subKey[j % subKey.length];
+      }
+
+      const text = out.toString('utf-8');
+      const start = text.indexOf('{');
+      const end = text.lastIndexOf('}') + 1;
+
+      if (start !== -1 && end !== -1 && end > start) {
+        try {
+          const json = JSON.parse(text.substring(start, end));
+          return { success: true, data: json };
+        } catch (e) {}
+      }
+    }
   }
 
-  generatedKeys.push(crypto.createHash('md5').update(tStr).digest());
-  generatedKeys.push(Buffer.from(tStr.padEnd(16, '0').slice(0, 16), 'utf-8'));
-
-  const generatedIVs = [
-    Buffer.from("1234567890123456", 'utf-8'),
-    Buffer.from("0000000000000000", 'utf-8'),
-    Buffer.from(tStr.padEnd(16, '0').slice(0, 16), 'utf-8'),
-    crypto.createHash('md5').update(tStr).digest(),
-    cipherBytes.subarray(0, 16) // حالة IV مدمج في أول 16 بايت
-  ];
-
-  for (const key of generatedKeys) {
-    for (const iv of generatedIVs) {
-      // 1. تجربة كامل البايتات
+  // تجربة فك الشفرة التسلسلي الخطي (Linear feedback stream)
+  for (let seed = 0; seed < 256; seed++) {
+    const out = Buffer.alloc(cipherBuffer.length);
+    let k = seed;
+    for (let i = 0; i < cipherBuffer.length; i++) {
+      out[i] = cipherBuffer[i] ^ k;
+      k = (k + 1) % 256;
+    }
+    const text = out.toString('utf-8');
+    if (text.includes('"id"') || text.includes('"name"') || text.includes('http')) {
+      const start = text.indexOf('{');
+      const end = text.lastIndexOf('}') + 1;
       try {
-        const decipher = crypto.createDecipheriv('aes-128-cbc', key, iv);
-        decipher.setAutoPadding(false);
-        let dec = decipher.update(cipherBytes);
-        dec = Buffer.concat([dec, decipher.final()]);
-        const text = dec.toString('utf-8');
-        if (text.includes('{') && text.includes('}')) {
-          const start = text.indexOf('{');
-          const end = text.lastIndexOf('}') + 1;
-          const parsed = JSON.parse(text.substring(start, end));
-          return parsed;
-        }
-      } catch (e) {}
-
-      // 2. تجربة تخطي أول 16 بايت في حال كان الـ IV في المقدمة
-      try {
-        const actualCipher = cipherBytes.subarray(16);
-        const decipher = crypto.createDecipheriv('aes-128-cbc', key, cipherBytes.subarray(0, 16));
-        decipher.setAutoPadding(false);
-        let dec = decipher.update(actualCipher);
-        dec = Buffer.concat([dec, decipher.final()]);
-        const text = dec.toString('utf-8');
-        if (text.includes('{') && text.includes('}')) {
-          const start = text.indexOf('{');
-          const end = text.lastIndexOf('}') + 1;
-          const parsed = JSON.parse(text.substring(start, end));
-          return parsed;
-        }
+        const json = JSON.parse(text.substring(start, end));
+        return { success: true, data: json };
       } catch (e) {}
     }
   }
 
-  return null;
+  return { success: false };
 }
 
 export default async function handler(req, res) {
@@ -86,7 +76,7 @@ export default async function handler(req, res) {
       }
     });
 
-    const headerT = response.headers.get("t") || response.headers.get("T") || "1787484688";
+    const headerT = response.headers.get("t") || response.headers.get("T") || "";
     const rawBuffer = await response.arrayBuffer();
 
     let textPayload;
@@ -97,20 +87,27 @@ export default async function handler(req, res) {
     }
 
     const cipherBytes = Buffer.from(textPayload.trim(), 'base64');
-    const result = exhaustiveAesDecrypt(cipherBytes, headerT);
+    const result = autoSolveYacineStream(cipherBytes);
 
-    if (result) {
+    if (result.success) {
       return res.status(200).json({
         status: "success",
         channel_id: channelId,
-        data: result
+        header_t: headerT,
+        channel_data: result.data
       });
     }
 
+    // إرجاع أول 50 حرف مفكوك جزئياً لمعرفة الكلمة المفتاحية فوراً
+    const probe = Buffer.alloc(40);
+    const keyBase = Buffer.from("c!u_");
+    for (let i = 0; i < 40; i++) {
+      probe[i] = cipherBytes[i] ^ keyBase[i % keyBase.length];
+    }
+
     return res.status(200).json({
-      status: "trying_pattern",
-      first_32_bytes_hex: cipherBytes.subarray(0, 32).toString('hex'),
-      header_t: headerT
+      status: "decoded_sample",
+      text_sample: probe.toString('utf-8')
     });
 
   } catch (error) {
