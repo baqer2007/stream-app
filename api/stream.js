@@ -14,6 +14,10 @@ export default async function handler(req, res) {
 
   try {
     const targetUrl = decodeURIComponent(url);
+    const parsedUrl = new URL(targetUrl);
+    const hostOrigin = parsedUrl.origin;
+    const queryParams = parsedUrl.search;
+
     const response = await fetch(targetUrl, {
       headers: {
         "User-Agent": "okhttp/4.9.0",
@@ -22,17 +26,22 @@ export default async function handler(req, res) {
       }
     });
 
-    const parsedUrl = new URL(targetUrl);
-    const queryParams = parsedUrl.search;
-
     if (targetUrl.includes(".m3u8")) {
       const m3u8Text = await response.text();
-      const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
+      const basePath = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
 
       const modifiedM3u8 = m3u8Text.replace(/^(?!#)(?!\s*$)(.+)$/gm, (line) => {
         const cleanLine = line.trim();
-        let fullSegmentUrl = cleanLine.startsWith("http") ? cleanLine : (cleanLine.startsWith("/") ? `${parsedUrl.origin}${cleanLine}` : baseUrl + cleanLine);
-        
+        let fullSegmentUrl;
+
+        if (cleanLine.startsWith("http://") || cleanLine.startsWith("https://")) {
+          fullSegmentUrl = cleanLine;
+        } else if (cleanLine.startsWith("/")) {
+          fullSegmentUrl = `${hostOrigin}${cleanLine}`;
+        } else {
+          fullSegmentUrl = `${basePath}${cleanLine}`;
+        }
+
         if (queryParams && !fullSegmentUrl.includes("?")) {
           fullSegmentUrl += queryParams;
         }
@@ -44,9 +53,10 @@ export default async function handler(req, res) {
       return res.status(200).send(modifiedM3u8);
     }
 
-    // تمرير أجزاء الفيديو (.js / .ts / .pdf) كفيديو مباشر
+    // جلب وتحويل مقاطع الفيديو (.js / .ts) إلى تدفق فيديو مباشر
     const arrayBuffer = await response.arrayBuffer();
-    res.setHeader("Content-Type", "video/mp2t");
+    res.setHeader("Content-Type", "video/MP2T");
+    res.setHeader("Content-Disposition", "inline");
     return res.status(200).send(Buffer.from(arrayBuffer));
 
   } catch (error) {
