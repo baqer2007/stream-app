@@ -3,162 +3,172 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>منصة البث المباشر</title>
+  <title>بث مباشر - قنوات رياضية</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background-color: #0a0e17;
-      color: #f8fafc;
-      min-height: 100vh;
+      background-color: #0b0f19;
+      color: #ffffff;
       display: flex;
       flex-direction: column;
-    }
-    nav {
-      background: #0f172a;
-      border-bottom: 1px solid #1e293b;
-      padding: 14px 20px;
-      display: flex;
-      justify-content: space-between;
       align-items: center;
+      min-height: 100vh;
+      padding: 20px;
     }
-    .logo { font-size: 1.1rem; font-weight: 800; color: #38bdf8; }
-    .badge-live { background: #ef4444; color: #fff; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; }
+
     .container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .player-wrapper {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%; /* 16:9 Aspect Ratio */
+      background-color: #000000;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      border: 1px solid #1f293d;
+    }
+
+    video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .controls-panel {
+      background-color: #131b2e;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #1f293d;
       display: flex;
       flex-direction: column;
       gap: 15px;
-      padding: 15px;
-      max-width: 1000px;
-      margin: 0 auto;
-      width: 100%;
     }
-    .video-box {
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      background: #000;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid #1e293b;
-    }
-    video { width: 100%; height: 100%; display: block; object-fit: contain; }
-    .info-box {
-      background: #131b2e;
-      padding: 14px;
-      border-radius: 8px;
+
+    .channel-title {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: #38bdf8;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      border: 1px solid #1e293b;
+      gap: 8px;
     }
-    .channels { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-    .ch-btn {
-      background: #131b2e;
-      padding: 12px 16px;
+
+    .channel-title::before {
+      content: "";
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background-color: #ef4444;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #ef4444;
+    }
+
+    .channels-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .channel-btn {
+      background-color: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #334155;
+      padding: 12px;
       border-radius: 8px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      border: 1px solid #1e293b;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      text-align: center;
     }
-    .ch-btn.active { border-color: #38bdf8; color: #38bdf8; background: #1e293b; }
+
+    .channel-btn:hover {
+      background-color: #2563eb;
+      border-color: #3b82f6;
+    }
+
+    .channel-btn.active {
+      background-color: #0284c7;
+      border-color: #38bdf8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
   </style>
 </head>
 <body>
 
-  <nav>
-    <div class="logo"><i class="fa-solid fa-tower-broadcast"></i> LIVE SPORT TV</div>
-    <div class="badge-live">LIVE</div>
-  </nav>
-
   <div class="container">
-    <div class="video-box">
-      <video id="videoPlayer" controls playsinline></video>
+    <div class="player-wrapper">
+      <video id="videoPlayer" controls autoplay playsinline></video>
     </div>
 
-    <div class="info-box">
-      <div id="channelTitle" style="font-weight: bold;">اختر قناة</div>
-      <div id="status" style="font-size: 12px; color: #38bdf8;">جاهز</div>
+    <div class="controls-panel">
+      <div class="channel-title" id="currentChannelName">beIN SPORTS 1 HD</div>
+      
+      <div class="channels-list">
+        <button class="channel-btn active" onclick="playStream('http://h55.medianexa.online/live/31009988005/index.m3u8?t=1iGPbxUX6fKN4sajqSWXBg&e=1787498185', 'beIN SPORTS 1 HD', this)">
+          سيرفر YTV PRO
+        </button>
+      </div>
     </div>
-
-    <ul class="channels" id="channelList"></ul>
   </div>
 
   <script>
-    const channels = [
-      {
-        name: "قناة YTV PRO الملتقطة",
-        url: "http://h35.zenvion.online/live/31009988005/index.m3u8?t=qVbwIgonsa0bO2FygXtz2Q&e=1787466309",
-        referer: "https://x.com/",
-        useProxy: true
-      },
-      {
-        name: "قناة Red Bull TV الرياضية",
-        url: "https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8",
-        useProxy: false
-      },
-      {
-        name: "قناة TRT World الإخبارية",
-        url: "https://tv-trtworld.medya.trt.com.tr/master.m3u8",
-        useProxy: false
-      }
-    ];
-
     const video = document.getElementById('videoPlayer');
-    const channelList = document.getElementById('channelList');
-    const channelTitle = document.getElementById('channelTitle');
-    const status = document.getElementById('status');
     let hls = null;
 
-    function renderList(activeIdx) {
-      channelList.innerHTML = '';
-      channels.forEach((ch, idx) => {
-        const li = document.createElement('li');
-        li.className = `ch-btn ${idx === activeIdx ? 'active' : ''}`;
-        li.innerHTML = `<i class="fa-solid fa-play"></i> <span>${ch.name}</span>`;
-        li.onclick = () => play(idx);
-        channelList.appendChild(li);
-      });
-    }
+    function playStream(rawUrl, channelName, element) {
+      if (element) {
+        document.querySelectorAll('.channel-btn').forEach(btn => btn.classList.remove('active'));
+        element.classList.add('active');
+      }
+      document.getElementById('currentChannelName').innerText = channelName;
 
-    function play(idx) {
-      renderList(idx);
-      const ch = channels[idx];
-      channelTitle.innerText = ch.name;
-      status.innerText = "جاري الاتصال...";
-
-      if (hls) hls.destroy();
-
-      const streamUrl = ch.useProxy 
-        ? `/api/stream?ref=${encodeURIComponent(ch.referer)}&url=${encodeURIComponent(ch.url)}` 
-        : ch.url;
+      // توجيه الرابط عبر البروكسي الداخلي
+      const proxyUrl = `/api/stream?url=${encodeURIComponent(rawUrl)}`;
 
       if (Hls.isSupported()) {
+        if (hls) {
+          hls.destroy();
+        }
         hls = new Hls({
           enableWorker: true,
-          lowLatencyMode: true
+          lowLatencyMode: true,
+          backBufferLength: 60
         });
-        hls.loadSource(streamUrl);
+        hls.loadSource(proxyUrl);
         hls.attachMedia(video);
-
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          status.innerText = "البث مباشر";
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {
           video.play().catch(() => {});
         });
-
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) status.innerText = "انتهى التوكن أو توقف السيرفر";
-        });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = streamUrl;
+        // تشغيل مباشر لأجهزة Safari و iOS
+        video.src = proxyUrl;
+        video.addEventListener('loadedmetadata', function () {
+          video.play().catch(() => {});
+        });
       }
     }
 
-    renderList(0);
-    play(0);
+    // تشغيل تلقائي عند فتح الصفحة
+    window.addEventListener('DOMContentLoaded', () => {
+      playStream('http://h55.medianexa.online/live/31009988005/index.m3u8?t=1iGPbxUX6fKN4sajqSWXBg&e=1787498185', 'beIN SPORTS 1 HD');
+    });
   </script>
 </body>
 </html>
