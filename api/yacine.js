@@ -1,37 +1,57 @@
 import zlib from 'zlib';
 
-function fullAutoDecrypt(cipherBuffer, headerT) {
-  const tStr = String(headerT || "1787477198");
-  const keysToTest = [
-    tStr,
-    "fik@4!895.21?h*r" + tStr,
-    tStr + "fik@4!895.21?h*r",
-    "yacine" + tStr,
-    "2024" + tStr
+function solveAndDecrypt(cipherBytes) {
+  // المفاتيح المحتملة استناداً إلى بايتات البداية
+  const knownPrefixes = [
+    '{"status":',
+    '{"channels":',
+    '{"data":',
+    '{"categories":',
+    '{"live":'
   ];
 
-  // تجربة المفتاح المستنتج من أول بايتات
-  const xorFirst = cipherBuffer[0] ^ 0x7B; // 0x7B هو كود البداية '{'
-  const autoKey = Buffer.alloc(1, xorFirst);
+  for (const prefix of knownPrefixes) {
+    const keyLen = 16;
+    const derivedKey = Buffer.alloc(Math.min(keyLen, prefix.length));
+    
+    for (let i = 0; i < derivedKey.length; i++) {
+      derivedKey[i] = cipherBytes[i] ^ prefix.charCodeAt(i);
+    }
 
-  const testList = [autoKey.toString('utf-8'), ...keysToTest];
+    // تجربة فك النص بالمفتاح المستنتج
+    const out = Buffer.alloc(cipherBytes.length);
+    for (let i = 0; i < cipherBytes.length; i++) {
+      out[i] = cipherBytes[i] ^ derivedKey[i % derivedKey.length];
+    }
 
-  for (const k of testList) {
+    const text = out.toString('utf-8');
     try {
-      const kBuf = Buffer.from(k, 'utf-8');
-      const out = Buffer.alloc(cipherBuffer.length);
-      for (let i = 0; i < cipherBuffer.length; i++) {
-        out[i] = cipherBuffer[i] ^ kBuf[i % kBuf.length];
-      }
-      const text = out.toString('utf-8');
       const start = text.indexOf('{');
       const end = text.lastIndexOf('}') + 1;
       if (start !== -1 && end !== -1) {
-        return JSON.parse(text.substring(start, end));
+        const json = JSON.parse(text.substring(start, end));
+        return { success: true, data: json };
       }
     } catch (e) {}
   }
-  return null;
+
+  // محاولة الفك بمفتاح ثابت متعدد البايتات
+  const customKey = Buffer.from([0x63, 0x21, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74]);
+  const out2 = Buffer.alloc(cipherBytes.length);
+  for (let i = 0; i < cipherBytes.length; i++) {
+    out2[i] = cipherBytes[i] ^ customKey[i % customKey.length];
+  }
+  
+  try {
+    const text2 = out2.toString('utf-8');
+    const start2 = text2.indexOf('{');
+    const end2 = text2.lastIndexOf('}') + 1;
+    if (start2 !== -1 && end2 !== -1) {
+      return { success: true, data: JSON.parse(text2.substring(start2, end2)) };
+    }
+  } catch (e) {}
+
+  return { success: false };
 }
 
 export default async function handler(req, res) {
@@ -47,10 +67,8 @@ export default async function handler(req, res) {
       }
     });
 
-    const headerT = response.headers.get("T");
     const arrayBuf = await response.arrayBuffer();
     let textPayload;
-
     try {
       textPayload = zlib.gunzipSync(Buffer.from(arrayBuf)).toString('utf-8');
     } catch (e) {
@@ -58,24 +76,20 @@ export default async function handler(req, res) {
     }
 
     const rawCipherBytes = Buffer.from(textPayload.trim(), 'base64');
-    const result = fullAutoDecrypt(rawCipherBytes, headerT);
+    const result = solveAndDecrypt(rawCipherBytes);
 
-    if (result) {
+    if (result.success) {
       return res.status(200).json({
         status: "success",
-        data: result
+        data: result.data
       });
     }
 
-    // إرجاع أول 20 بايت بعد فك XOR البسيط لتحديد النمط
-    const probe = Buffer.alloc(30);
-    for (let i = 0; i < 30; i++) {
-      probe[i] = rawCipherBytes[i] ^ 0x63; // تجربة مفتاح الإزاحة 0x63
-    }
-
+    // إرجاع أول 64 بايت لتحليل المفتاح بدقة إن لزم
+    const hexDump = rawCipherBytes.subarray(0, 32).toString('hex');
     return res.status(200).json({
-      status: "probe",
-      sample_text: probe.toString('utf-8')
+      status: "key_extracting",
+      header_hex: hexDump
     });
 
   } catch (error) {
