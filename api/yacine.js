@@ -1,46 +1,34 @@
-import crypto from 'crypto';
-import zlib from 'zlib';
 
-const KEYS_POOL = [
-  // مفاتيح YTV PRO الحديثة و Yacine TV v3
-  { key: "1234567890123456", iv: "1234567890123456", algo: "aes-128-cbc" },
-  { key: "fik@4!895.21?h*r", iv: "1234567890123456", algo: "aes-128-cbc" },
-  { key: "yacinetvkey12345", iv: "yacinetviv123456", algo: "aes-128-cbc" },
-  { key: "ytvprokey2024app", iv: "1234567890123456", algo: "aes-128-cbc" },
-  { key: "c29tZXJhbmRvbWtleQ==", iv: "1234567890123456", algo: "aes-128-cbc" },
-  { key: "com.ytv.player.app", iv: "1234567890123456", algo: "aes-128-cbc" },
-  { key: "0123456789abcdef", iv: "fedcba9876543210", algo: "aes-128-cbc" },
-  { key: "yacine_tv_secret", iv: "0000000000000000", algo: "aes-128-cbc" }
+import zlib from 'zlib';
+import crypto from 'crypto';
+
+// قائمة مفاتيح فك التشفير المعروفة لتطبيقات YTV و Yacine
+const XOR_KEYS = [
+  "fik@4!895.21?h*r",
+  "yacinetvkey12345",
+  "yacinetv",
+  "com.ytv.player",
+  "ytvpro2024",
+  "1234567890123456"
 ];
 
-function tryAllDecrypt(cipherBase64) {
-  for (const item of KEYS_POOL) {
-    try {
-      const key = Buffer.from(item.key.padEnd(16, '0').slice(0, 16), 'utf-8');
-      const iv = Buffer.from(item.iv.padEnd(16, '0').slice(0, 16), 'utf-8');
-      
-      const decipher = crypto.createDecipheriv(item.algo, key, iv);
-      let dec = decipher.update(cipherBase64, 'base64', 'utf-8');
-      dec += decipher.final('utf-8');
-      
-      const parsed = JSON.parse(dec);
-      return { success: true, key: item.key, data: parsed };
-    } catch (e) {
-      // تجربة بدون Padding
-      try {
-        const key = Buffer.from(item.key.padEnd(16, '0').slice(0, 16), 'utf-8');
-        const iv = Buffer.from(item.iv.padEnd(16, '0').slice(0, 16), 'utf-8');
-        const decipher = crypto.createDecipheriv(item.algo, key, iv);
-        decipher.setAutoPadding(false);
-        let dec = decipher.update(cipherBase64, 'base64', 'utf-8');
-        dec += decipher.final('utf-8');
-        const clean = dec.replace(/[\x00-\x1F\x7F]/g, "").trim();
-        const parsed = JSON.parse(clean);
-        return { success: true, key: item.key, data: parsed };
-      } catch (err) {}
-    }
+function xorDecrypt(buffer, keyStr) {
+  const key = Buffer.from(keyStr, 'utf-8');
+  const out = Buffer.alloc(buffer.length);
+  for (let i = 0; i < buffer.length; i++) {
+    out[i] = buffer[i] ^ key[i % key.length];
   }
-  return { success: false };
+  return out.toString('utf-8');
+}
+
+function rc4Decrypt(buffer, keyStr) {
+  try {
+    const decipher = crypto.createDecipheriv('rc4', Buffer.from(keyStr), '');
+    const out = Buffer.concat([decipher.update(buffer), decipher.final()]);
+    return out.toString('utf-8');
+  } catch (e) {
+    return null;
+  }
 }
 
 export default async function handler(req, res) {
@@ -56,29 +44,54 @@ export default async function handler(req, res) {
       }
     });
 
-    const buffer = await response.arrayBuffer();
-    let rawText;
+    const rawBuffer = await response.arrayBuffer();
+    let textPayload;
     try {
-      rawText = zlib.gunzipSync(Buffer.from(buffer)).toString('utf-8');
+      textPayload = zlib.gunzipSync(Buffer.from(rawBuffer)).toString('utf-8');
     } catch (e) {
-      rawText = Buffer.from(buffer).toString('utf-8');
+      textPayload = Buffer.from(rawBuffer).toString('utf-8');
     }
 
-    const cipherText = rawText.trim();
-    const result = tryAllDecrypt(cipherText);
+    const base64Clean = textPayload.trim();
+    const rawBytes = Buffer.from(base64Clean, 'base64');
 
-    if (result.success) {
-      return res.status(200).json({
-        status: "success",
-        matched_key: result.key,
-        data: result.data
-      });
+    // 1. تجربة فك التشفير عبر XOR مع المفاتيح
+    for (const k of XOR_KEYS) {
+      try {
+        const text = xorDecrypt(rawBytes, k);
+        if (text.includes('{') && text.includes('}')) {
+          const jsonStart = text.indexOf('{');
+          const jsonEnd = text.lastIndexOf('}') + 1;
+          const parsed = JSON.parse(text.substring(jsonStart, jsonEnd));
+          return res.status(200).json({ status: "success", method: "xor", key: k, data: parsed });
+        }
+      } catch (err) {}
     }
 
-    // إرجاع النص المشفر بالكامل لنتمكن من تحليله فكياً
+    // 2. تجربة فك التشفير عبر RC4
+    for (const k of XOR_KEYS) {
+      try {
+        const text = rc4Decrypt(rawBytes, k);
+        if (text && text.includes('{') && text.includes('}')) {
+          const jsonStart = text.indexOf('{');
+          const jsonEnd = text.lastIndexOf('}') + 1;
+          const parsed = JSON.parse(text.substring(jsonStart, jsonEnd));
+          return res.status(200).json({ status: "success", method: "rc4", key: k, data: parsed });
+        }
+      } catch (err) {}
+    }
+
+    // 3. تجربة اشتقاق المفتاح تلقائياً عبر فحص رأس الـ JSON
+    // بافتراض بداية النص المشفر تبدأ بـ {"
+    const targetHeader = Buffer.from('{"');
+    const derivedKey = Buffer.alloc(2);
+    derivedKey[0] = rawBytes[0] ^ targetHeader[0];
+    derivedKey[1] = rawBytes[1] ^ targetHeader[1];
+
     return res.status(200).json({
-      status: "need_custom_key",
-      cipher_full: cipherText
+      status: "analyzing",
+      raw_length: rawBytes.length,
+      derived_header_bytes: derivedKey.toString('hex')
     });
 
   } catch (error) {
