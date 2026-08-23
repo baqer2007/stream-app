@@ -1,34 +1,51 @@
 import crypto from 'crypto';
 import zlib from 'zlib';
 
-function tryRc4(cipherBytes, key) {
-  try {
-    const decipher = crypto.createDecipheriv('rc4', Buffer.from(key), '');
-    const out = Buffer.concat([decipher.update(cipherBytes), decipher.final()]);
-    const text = out.toString('utf-8');
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}') + 1;
-    if (start !== -1 && end !== -1) {
-      return JSON.parse(text.substring(start, end));
-    }
-  } catch (e) {}
-  return null;
-}
+function fullDecodeStream(buffer) {
+  // تجربة فك تشفير AES القياسي لمشغل YTV PRO
+  const keys = [
+    Buffer.from("fik@4!895.21?h*r", "utf-8"),
+    Buffer.from("yacinetvkey12345", "utf-8"),
+    Buffer.from("1234567890123456", "utf-8")
+  ];
+  const ivs = [
+    Buffer.from("1234567890123456", "utf-8"),
+    Buffer.from("0000000000000000", "utf-8")
+  ];
 
-function tryXor(cipherBytes, key) {
-  try {
-    const kBuf = Buffer.from(key);
-    const out = Buffer.alloc(cipherBytes.length);
-    for (let i = 0; i < cipherBytes.length; i++) {
-      out[i] = cipherBytes[i] ^ kBuf[i % kBuf.length];
+  for (const k of keys) {
+    for (const iv of ivs) {
+      try {
+        const decipher = crypto.createDecipheriv('aes-128-cbc', k, iv);
+        decipher.setAutoPadding(false);
+        let dec = decipher.update(buffer);
+        dec = Buffer.concat([dec, decipher.final()]);
+        const text = dec.toString('utf-8');
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}') + 1;
+        if (start !== -1 && end !== -1) {
+          const json = JSON.parse(text.substring(start, end).replace(/[\x00-\x1F\x7F]/g, ''));
+          return json;
+        }
+      } catch (e) {}
     }
-    const text = out.toString('utf-8');
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}') + 1;
-    if (start !== -1 && end !== -1) {
-      return JSON.parse(text.substring(start, end));
-    }
-  } catch (e) {}
+  }
+
+  // محاولة فك تشفير XOR المباشر
+  const xorKey = Buffer.from("fik@4!895.21?h*r", "utf-8");
+  const out = Buffer.alloc(buffer.length);
+  for (let i = 0; i < buffer.length; i++) {
+    out[i] = buffer[i] ^ xorKey[i % xorKey.length];
+  }
+  const textXor = out.toString('utf-8');
+  const startXor = textXor.indexOf('{');
+  const endXor = textXor.lastIndexOf('}') + 1;
+  if (startXor !== -1 && endXor !== -1) {
+    try {
+      return JSON.parse(textXor.substring(startXor, endXor));
+    } catch (e) {}
+  }
+
   return null;
 }
 
@@ -41,61 +58,37 @@ export default async function handler(req, res) {
   try {
     const response = await fetch(API_URL, {
       headers: {
-        "User-Agent": "okhttp/4.9.0"
+        "User-Agent": "okhttp/3.12.1",
+        "Accept-Encoding": "gzip",
+        "Connection": "Keep-Alive",
+        "Host": "def.yacinelive.com"
       }
     });
 
-    const headerT = response.headers.get("t") || response.headers.get("T") || "1787481279";
-    const arrayBuf = await response.arrayBuffer();
+    const rawBuffer = await response.arrayBuffer();
     let textPayload;
 
     try {
-      textPayload = zlib.gunzipSync(Buffer.from(arrayBuf)).toString('utf-8');
+      textPayload = zlib.gunzipSync(Buffer.from(rawBuffer)).toString('utf-8');
     } catch (e) {
-      textPayload = Buffer.from(arrayBuf).toString('utf-8');
+      textPayload = Buffer.from(rawBuffer).toString('utf-8');
     }
 
-    const cipherBytes = Buffer.from(textPayload.trim(), 'base64');
+    const base64Str = textPayload.trim();
+    const cipherBytes = Buffer.from(base64Str, 'base64');
 
-    // احتمالات المفاتيح المشتقة
-    const keyCandidates = [
-      headerT,
-      crypto.createHash('md5').update(headerT).digest('hex'),
-      crypto.createHash('md5').update(headerT).digest(),
-      "fik@4!895.21?h*r" + headerT,
-      headerT + "fik@4!895.21?h*r",
-      crypto.createHash('sha256').update(headerT).digest('hex').substring(0, 16),
-      "yacinetv" + headerT,
-      "ytvpro" + headerT
-    ];
+    const result = fullDecodeStream(cipherBytes);
 
-    // 1. فحص عبر RC4
-    for (const k of keyCandidates) {
-      const resData = tryRc4(cipherBytes, k);
-      if (resData) {
-        return res.status(200).json({ status: "success", cipher: "rc4", data: resData });
-      }
-    }
-
-    // 2. فحص عبر XOR
-    for (const k of keyCandidates) {
-      const resData = tryXor(cipherBytes, k);
-      if (resData) {
-        return res.status(200).json({ status: "success", cipher: "xor", data: resData });
-      }
-    }
-
-    // استخراج المفتاح المباشر بافتراض JSON
-    const assumedHeader = Buffer.from('{"status":200');
-    const dynamicKey = Buffer.alloc(assumedHeader.length);
-    for (let i = 0; i < assumedHeader.length; i++) {
-      dynamicKey[i] = cipherBytes[i] ^ assumedHeader[i];
+    if (result) {
+      return res.status(200).json({
+        status: "success",
+        data: result
+      });
     }
 
     return res.status(200).json({
-      status: "inspecting",
-      header_T: headerT,
-      discovered_key_part: dynamicKey.toString('utf-8')
+      status: "ready_to_parse",
+      payload_sample: base64Str.substring(0, 50)
     });
 
   } catch (error) {
