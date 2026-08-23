@@ -93,6 +93,10 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      transition: background-color 0.2s;
+    }
+    .channel-item:hover {
+      background-color: #1e293b;
     }
     .channel-item.active {
       background-color: #0284c7;
@@ -114,23 +118,26 @@
     </div>
 
     <div class="status-box">
-      <span id="currentStatus">جاري تشغيل البث...</span>
-      <span style="color: #22c55e;">● مباشر</span>
+      <span id="currentStatus">جاري تجهيز البث...</span>
+      <span style="color: #22c55e;">● متصل</span>
     </div>
 
     <div class="channels-list">
-      <button class="channel-item active" onclick="playChannel('https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8', 'Red Bull TV المباشرة 🔴', this)">
-        <span>قناة Red Bull TV الرياضية</span>
+      <!-- سيرفر 1 الملتقط -->
+      <button class="channel-item active" onclick="playChannel('/api/stream?url=' + encodeURIComponent('http://h27.vidcloudy.online/0021012254/31009988005/index.m3u8'), 'قناة البث الرياضية المباشرة (سيرفر 1)', this)">
+        <span>قناة البث المباشر - سيرفر 1</span>
         <span>◀</span>
       </button>
 
-      <button class="channel-item" onclick="playChannel('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', 'بث رياضي تجريبي HD', this)">
-        <span>بث رياضي تجريبي HD</span>
+      <!-- سيرفر 2 الملتقط -->
+      <button class="channel-item" onclick="playChannel('/api/stream?url=' + encodeURIComponent('http://h34.veyratech.buzz/0021012254/978480008877005/index.m3u8'), 'قناة البث الرياضية المباشرة (سيرفر 2)', this)">
+        <span>قناة البث المباشر - سيرفر 2</span>
         <span>◀</span>
       </button>
 
-      <button class="channel-item" onclick="playChannel('https://cph-p2p-msl.akamaized.net/hls/live/200034/test/master.m3u8', 'Akamai Sports Event', this)">
-        <span>بث الأحداث المباشرة HD</span>
+      <!-- بث احتياطي دائم -->
+      <button class="channel-item" onclick="playChannel('https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8', 'قناة Red Bull TV الرياضية المباشرة', this)">
+        <span>قناة Red Bull TV المباشرة</span>
         <span>◀</span>
       </button>
     </div>
@@ -146,15 +153,26 @@
         document.querySelectorAll('.channel-item').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
       }
-      statusText.innerText = name;
+      statusText.innerText = "جاري تشغيل: " + name;
 
       if (Hls.isSupported()) {
-        if (hls) hls.destroy();
-        hls = new Hls({ enableWorker: true });
+        if (hls) {
+          hls.destroy();
+        }
+        hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true
+        });
         hls.loadSource(url);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.play().catch(e => console.log(e));
+          video.play().catch(e => console.log("Autoplay blocked:", e));
+        });
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            console.error("HLS Error:", data);
+            statusText.innerText = "خطأ في تشغيل السيرفر، جرب سيرفر آخر";
+          }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = url;
@@ -164,9 +182,12 @@
       }
     }
 
+    // تشغيل القناة الأولى افتراضياً عند فتح الصفحة
     document.addEventListener('DOMContentLoaded', () => {
       const activeBtn = document.querySelector('.channel-item.active');
-      if (activeBtn) activeBtn.click();
+      if (activeBtn) {
+        activeBtn.click();
+      }
     });
   </script>
 </body>
