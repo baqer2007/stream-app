@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import zlib from 'zlib';
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -11,12 +12,21 @@ export default async function handler(req, res) {
   try {
     const response = await fetch(API_URL, {
       headers: {
-        "User-Agent": "okhttp/4.9.0",
-        "Accept-Encoding": "gzip"
+        "User-Agent": "okhttp/4.9.0"
       }
     });
 
-    const encryptedData = (await response.text()).trim();
+    const buffer = await response.arrayBuffer();
+    let textData;
+
+    // فك ضغط Gzip إذا كانت الاستجابة مضغوطة
+    try {
+      textData = zlib.gunzipSync(Buffer.from(buffer)).toString('utf-8');
+    } catch (e) {
+      textData = Buffer.from(buffer).toString('utf-8');
+    }
+
+    const encryptedData = textData.trim();
 
     // فك تشفير AES-128-CBC
     const decipher = crypto.createDecipheriv("aes-128-cbc", KEY, IV);
