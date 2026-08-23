@@ -1,27 +1,37 @@
 import zlib from 'zlib';
 
-// خوارزمية فك تشفير YTV PRO / Yacine الحديثة
-function decryptYTV(encodedStr) {
-  const rawBytes = Buffer.from(encodedStr, 'base64');
-  const key = Buffer.from("fik@4!895.21?h*r", "utf-8");
-  const output = Buffer.alloc(rawBytes.length);
+function fullAutoDecrypt(cipherBuffer, headerT) {
+  const tStr = String(headerT || "1787477198");
+  const keysToTest = [
+    tStr,
+    "fik@4!895.21?h*r" + tStr,
+    tStr + "fik@4!895.21?h*r",
+    "yacine" + tStr,
+    "2024" + tStr
+  ];
 
-  for (let i = 0; i < rawBytes.length; i++) {
-    output[i] = rawBytes[i] ^ key[i % key.length];
-  }
+  // تجربة المفتاح المستنتج من أول بايتات
+  const xorFirst = cipherBuffer[0] ^ 0x7B; // 0x7B هو كود البداية '{'
+  const autoKey = Buffer.alloc(1, xorFirst);
 
-  // معالجة بايتات المحاذاة والتنسيق
-  let text = output.toString('utf-8');
-  
-  // استخراج كائن الـ JSON الصافي
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}') + 1;
-  
-  if (start !== -1 && end !== -1) {
-    return JSON.parse(text.substring(start, end));
+  const testList = [autoKey.toString('utf-8'), ...keysToTest];
+
+  for (const k of testList) {
+    try {
+      const kBuf = Buffer.from(k, 'utf-8');
+      const out = Buffer.alloc(cipherBuffer.length);
+      for (let i = 0; i < cipherBuffer.length; i++) {
+        out[i] = cipherBuffer[i] ^ kBuf[i % kBuf.length];
+      }
+      const text = out.toString('utf-8');
+      const start = text.indexOf('{');
+      const end = text.lastIndexOf('}') + 1;
+      if (start !== -1 && end !== -1) {
+        return JSON.parse(text.substring(start, end));
+      }
+    } catch (e) {}
   }
-  
-  throw new Error("Invalid JSON extraction");
+  return null;
 }
 
 export default async function handler(req, res) {
@@ -37,45 +47,41 @@ export default async function handler(req, res) {
       }
     });
 
+    const headerT = response.headers.get("T");
     const arrayBuf = await response.arrayBuffer();
     let textPayload;
+
     try {
       textPayload = zlib.gunzipSync(Buffer.from(arrayBuf)).toString('utf-8');
     } catch (e) {
       textPayload = Buffer.from(arrayBuf).toString('utf-8');
     }
 
-    const cleanBase64 = textPayload.trim();
-    const parsedData = decryptYTV(cleanBase64);
+    const rawCipherBytes = Buffer.from(textPayload.trim(), 'base64');
+    const result = fullAutoDecrypt(rawCipherBytes, headerT);
+
+    if (result) {
+      return res.status(200).json({
+        status: "success",
+        data: result
+      });
+    }
+
+    // إرجاع أول 20 بايت بعد فك XOR البسيط لتحديد النمط
+    const probe = Buffer.alloc(30);
+    for (let i = 0; i < 30; i++) {
+      probe[i] = rawCipherBytes[i] ^ 0x63; // تجربة مفتاح الإزاحة 0x63
+    }
 
     return res.status(200).json({
-      status: "success",
-      data: parsedData
+      status: "probe",
+      sample_text: probe.toString('utf-8')
     });
 
   } catch (error) {
-    // محاولة ثانوية باستخدام مفتاح الحزمة الاحتياطي
-    try {
-      const rawBytes = Buffer.from((await (await fetch(API_URL)).text()).trim(), 'base64');
-      const altKey = Buffer.from("yacinetvkey12345", "utf-8");
-      const altOut = Buffer.alloc(rawBytes.length);
-      for (let i = 0; i < rawBytes.length; i++) {
-        altOut[i] = rawBytes[i] ^ altKey[i % altKey.length];
-      }
-      const altText = altOut.toString('utf-8');
-      const start = altText.indexOf('{');
-      const end = altText.lastIndexOf('}') + 1;
-      const parsedData = JSON.parse(altText.substring(start, end));
-
-      return res.status(200).json({
-        status: "success",
-        data: parsedData
-      });
-    } catch (err2) {
-      return res.status(500).json({
-        status: "error",
-        message: "Decryption failed: " + error.message
-      });
-    }
+    return res.status(500).json({
+      status: "error",
+      message: error.message
+    });
   }
 }
