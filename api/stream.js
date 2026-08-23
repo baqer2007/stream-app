@@ -27,19 +27,29 @@ export default async function handler(req, res) {
     });
 
     if (targetUrl.includes(".m3u8")) {
-      const m3u8Text = await response.text();
+      let m3u8Text = await response.text();
       const basePath = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
 
-      const modifiedM3u8 = m3u8Text.replace(/^(?!#)(?!\s*$)(.+)$/gm, (line) => {
-        const cleanLine = line.trim();
-        let fullSegmentUrl;
+      // 1. إعادة توجيه مفاتيح التشفير #EXT-X-KEY إن وجدت
+      m3u8Text = m3u8Text.replace(/URI="([^"]+)"/g, (match, uri) => {
+        let fullKeyUrl = uri.startsWith("http") ? uri : (uri.startsWith("/") ? `${hostOrigin}${uri}` : `${basePath}${uri}`);
+        if (queryParams && !fullKeyUrl.includes("?")) fullKeyUrl += queryParams;
+        return `URI="/api/stream?url=${encodeURIComponent(fullKeyUrl)}"`;
+      });
 
-        if (cleanLine.startsWith("http://") || cleanLine.startsWith("https://")) {
-          fullSegmentUrl = cleanLine;
-        } else if (cleanLine.startsWith("/")) {
-          fullSegmentUrl = `${hostOrigin}${cleanLine}`;
+      // 2. إعادة توجيه مقاطع الفيديو (.js / .ts / .pdf)
+      const lines = m3u8Text.split('\n');
+      const rewrittenLines = lines.map(line => {
+        const clean = line.trim();
+        if (!clean || clean.startsWith('#')) return line;
+
+        let fullSegmentUrl;
+        if (clean.startsWith("http://") || clean.startsWith("https://")) {
+          fullSegmentUrl = clean;
+        } else if (clean.startsWith("/")) {
+          fullSegmentUrl = `${hostOrigin}${clean}`;
         } else {
-          fullSegmentUrl = `${basePath}${cleanLine}`;
+          fullSegmentUrl = `${basePath}${clean}`;
         }
 
         if (queryParams && !fullSegmentUrl.includes("?")) {
@@ -50,16 +60,17 @@ export default async function handler(req, res) {
       });
 
       res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-      return res.status(200).send(modifiedM3u8);
+      return res.status(200).send(rewrittenLines.join('\n'));
     }
 
-    // جلب وتحويل مقاطع الفيديو (.js / .ts) إلى تدفق فيديو مباشر
+    // جلب تمرير مقاطع الفيديو ومفاتيح التشفير
     const arrayBuffer = await response.arrayBuffer();
-    res.setHeader("Content-Type", "video/MP2T");
-    res.setHeader("Content-Disposition", "inline");
+    const contentType = targetUrl.includes(".key") ? "application/octet-stream" : "video/MP2T";
+    res.setHeader("Content-Type", contentType);
     return res.status(200).send(Buffer.from(arrayBuffer));
 
   } catch (error) {
     return res.status(500).send(error.message);
   }
 }
+8
