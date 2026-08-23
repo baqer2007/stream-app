@@ -1,63 +1,78 @@
 import zlib from 'zlib';
 
-function autoSolveYacineStream(cipherBuffer) {
-  // تجربة فك الشفرة بالاستنتاج التلقائي لهيكل كائنات JSON
-  const targetPrefixes = [
-    '{"id":',
-    '{"status":',
-    '{"name":',
-    '{"channel":',
-    '{"success":',
-    '{"data":'
+function fullAutoSolve(cipherBytes) {
+  // قائمة المفاتيح الكاملة والتوافيق لتطبيق ياسين تيفي
+  const baseKeys = [
+    "fik@4!895.21?h*r",
+    "c!u_yacinetv2024",
+    "c!u_player_key12",
+    "yacinetvkey12345",
+    "com.ytv.player",
+    "1234567890123456"
   ];
 
-  for (const prefix of targetPrefixes) {
-    const key = Buffer.alloc(prefix.length);
-    for (let i = 0; i < prefix.length; i++) {
-      key[i] = cipherBuffer[i] ^ prefix.charCodeAt(i);
-    }
-
-    // تجربة أطوال مفاتيح دورية مختلفة (من طول المفتاح المكتشف حتى 32)
-    for (let kLen = 4; kLen <= key.length; kLen++) {
-      const subKey = key.subarray(0, kLen);
-      const out = Buffer.alloc(cipherBuffer.length);
-      for (let j = 0; j < cipherBuffer.length; j++) {
-        out[j] = cipherBuffer[j] ^ subKey[j % subKey.length];
-      }
-
-      const text = out.toString('utf-8');
-      const start = text.indexOf('{');
-      const end = text.lastIndexOf('}') + 1;
-
-      if (start !== -1 && end !== -1 && end > start) {
-        try {
-          const json = JSON.parse(text.substring(start, end));
-          return { success: true, data: json };
-        } catch (e) {}
-      }
-    }
-  }
-
-  // تجربة فك الشفرة التسلسلي الخطي (Linear feedback stream)
-  for (let seed = 0; seed < 256; seed++) {
-    const out = Buffer.alloc(cipherBuffer.length);
-    let k = seed;
-    for (let i = 0; i < cipherBuffer.length; i++) {
-      out[i] = cipherBuffer[i] ^ k;
-      k = (k + 1) % 256;
+  // 1. تجربة المفاتيح الكاملة
+  for (const kStr of baseKeys) {
+    const kBuf = Buffer.from(kStr, 'utf-8');
+    const out = Buffer.alloc(cipherBytes.length);
+    for (let i = 0; i < cipherBytes.length; i++) {
+      out[i] = cipherBytes[i] ^ kBuf[i % kBuf.length];
     }
     const text = out.toString('utf-8');
-    if (text.includes('"id"') || text.includes('"name"') || text.includes('http')) {
+    try {
       const start = text.indexOf('{');
       const end = text.lastIndexOf('}') + 1;
+      if (start !== -1 && end !== -1 && end > start) {
+        return JSON.parse(text.substring(start, end));
+      }
+    } catch (e) {}
+  }
+
+  // 2. البحث عن المفتاح بالتحليل الترددي المباشر للأطوال من 4 إلى 32
+  for (let kLen = 4; kLen <= 32; kLen++) {
+    const derivedKey = Buffer.alloc(kLen);
+    const prefix = '{"id":44,"name":';
+    
+    for (let i = 0; i < Math.min(kLen, prefix.length); i++) {
+      derivedKey[i] = cipherBytes[i] ^ prefix.charCodeAt(i);
+    }
+    
+    // إكمال المفتاح إن كان الطول أكبر
+    for (let i = prefix.length; i < kLen; i++) {
+      derivedKey[i] = derivedKey[i % prefix.length];
+    }
+
+    const out = Buffer.alloc(cipherBytes.length);
+    for (let i = 0; i < cipherBytes.length; i++) {
+      out[i] = cipherBytes[i] ^ derivedKey[i % kLen];
+    }
+
+    const text = out.toString('utf-8');
+    if (text.includes('http') || text.includes('m3u8')) {
       try {
-        const json = JSON.parse(text.substring(start, end));
-        return { success: true, data: json };
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}') + 1;
+        return JSON.parse(text.substring(start, end));
       } catch (e) {}
     }
   }
 
-  return { success: false };
+  // 3. فك التشفير عبر XOR متعدد التدرج المستنتج من أول 8 بايتات
+  const key8 = Buffer.from([0x63, 0x21, 0x75, 0x5f, 0x66, 0x69, 0x6b, 0x40]); // c!u_fik@
+  const out8 = Buffer.alloc(cipherBytes.length);
+  for (let i = 0; i < cipherBytes.length; i++) {
+    out8[i] = cipherBytes[i] ^ key8[i % key8.length];
+  }
+  try {
+    const text = out8.toString('utf-8');
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}') + 1;
+    if (start !== -1 && end !== -1) {
+      return JSON.parse(text.substring(start, end));
+    }
+  } catch (e) {}
+
+  return null;
 }
 
 export default async function handler(req, res) {
@@ -76,9 +91,7 @@ export default async function handler(req, res) {
       }
     });
 
-    const headerT = response.headers.get("t") || response.headers.get("T") || "";
     const rawBuffer = await response.arrayBuffer();
-
     let textPayload;
     try {
       textPayload = zlib.gunzipSync(Buffer.from(rawBuffer)).toString('utf-8');
@@ -87,27 +100,26 @@ export default async function handler(req, res) {
     }
 
     const cipherBytes = Buffer.from(textPayload.trim(), 'base64');
-    const result = autoSolveYacineStream(cipherBytes);
+    const result = fullAutoSolve(cipherBytes);
 
-    if (result.success) {
+    if (result) {
       return res.status(200).json({
         status: "success",
         channel_id: channelId,
-        header_t: headerT,
-        channel_data: result.data
+        channel_data: result
       });
     }
 
-    // إرجاع أول 50 حرف مفكوك جزئياً لمعرفة الكلمة المفتاحية فوراً
-    const probe = Buffer.alloc(40);
-    const keyBase = Buffer.from("c!u_");
-    for (let i = 0; i < 40; i++) {
-      probe[i] = cipherBytes[i] ^ keyBase[i % keyBase.length];
+    // إرجاع أول 80 حرف من النص المفكوك بالمفتاح المستنتج لتأكيد هيكل الـ JSON
+    const testKey = Buffer.from([0x63, 0x21, 0x75, 0x5f]);
+    const dump = Buffer.alloc(80);
+    for (let i = 0; i < 80; i++) {
+      dump[i] = cipherBytes[i] ^ testKey[i % testKey.length];
     }
 
     return res.status(200).json({
-      status: "decoded_sample",
-      text_sample: probe.toString('utf-8')
+      status: "inspect_stream",
+      preview_text: dump.toString('utf-8')
     });
 
   } catch (error) {
