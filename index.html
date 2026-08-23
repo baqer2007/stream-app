@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>بث مباشر - المشغل الرياضي</title>
+  <title>بث مباشر - قنوات رياضية</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     * {
@@ -79,7 +79,7 @@
 
     .channels-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 10px;
     }
 
@@ -91,8 +91,9 @@
       border-radius: 8px;
       cursor: pointer;
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       transition: all 0.2s ease;
+      text-align: center;
     }
 
     .channel-btn:hover {
@@ -103,6 +104,7 @@
     .channel-btn.active {
       background-color: #0284c7;
       border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
     }
   </style>
 </head>
@@ -116,15 +118,12 @@
     <div class="controls-card">
       <div class="status-header">
         <span class="status-dot"></span>
-        <span id="channelName">اختر القناة للتشغيل</span>
+        <span id="channelName">beIN SPORTS 1 HD</span>
       </div>
 
       <div class="channels-grid">
-        <button class="channel-btn" onclick="playChannel('https://playertest.longtailvideo.com/adaptive/oceans_aes/oceans_aes.m3u8', 'قناة اختبار البث المشفر AES', this)">
-          اختبار بث AES (تأكيد المشغل)
-        </button>
-        <button class="channel-btn" onclick="playChannel('http://h55.medianexa.online/live/31009988005/index.m3u8?t=1iGPbxUX6fKN4sajqSWXBg&e=1787498185', 'سيرفر YTV PRO الملتقط', this)">
-          سيرفر YTV PRO
+        <button class="channel-btn active" onclick="playChannel('http://h31.proxira.buzz/live/31009988005/index.m3u8?t=Ft19A40T-UTyUuBAJIa7Pg&e=1787501350', 'beIN SPORTS 1 HD', this)">
+          beIN SPORTS 1 HD
         </button>
       </div>
     </div>
@@ -145,7 +144,7 @@
 
       if (Hls.isSupported()) {
         if (hls) hls.destroy();
-        hls = new Hls({ enableWorker: true });
+        hls = new Hls({ enableWorker: true, lowLatencyMode: true });
         hls.loadSource(finalUrl);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
@@ -156,9 +155,8 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      // تجربة القناة الأولى تلقائياً للتأكد من عمل المحرك
-      const firstBtn = document.querySelector('.channel-btn');
-      if (firstBtn) firstBtn.click();
+      const activeBtn = document.querySelector('.channel-btn.active');
+      if (activeBtn) activeBtn.click();
     });
   </script>
 </body>
