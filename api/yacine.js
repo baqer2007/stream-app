@@ -1,62 +1,28 @@
+import crypto from 'crypto';
 import zlib from 'zlib';
 
-const KNOWN_KEYS = [
-  "fik@4!895.21?h*r",
-  "yacinetvkey12345",
-  "yacinetv",
-  "1234567890123456",
-  "com.ytv.player"
-];
-
-function tryBruteDecode(rawBytes) {
-  // تجربة تخطي بايتات الرأس (من 0 إلى 16 بايت) مع جميع المفاتيح
-  for (let offset = 0; offset <= 16; offset++) {
-    const slice = rawBytes.subarray(offset);
-    
-    for (const keyStr of KNOWN_KEYS) {
-      const key = Buffer.from(keyStr, 'utf-8');
-      const out = Buffer.alloc(slice.length);
-      
-      for (let i = 0; i < slice.length; i++) {
-        out[i] = slice[i] ^ key[i % key.length];
-      }
-
-      const text = out.toString('utf-8');
-      if (text.includes('{') && text.includes('}')) {
-        const start = text.indexOf('{');
-        const end = text.lastIndexOf('}') + 1;
-        try {
-          const parsed = JSON.parse(text.substring(start, end));
-          return { success: true, offset, key: keyStr, data: parsed };
-        } catch (e) {}
-      }
-    }
-  }
-
-  // تجربة البحث التلقائي عن مفتاح دوري (Rolling XOR Key Search)
-  for (let offset = 0; offset < 8; offset++) {
-    const slice = rawBytes.subarray(offset);
-    // بافتراض البداية {"
-    const k0 = slice[0] ^ 0x7B;
-    const k1 = slice[1] ^ 0x22;
-    
-    const testKey = Buffer.from([k0, k1]);
-    const out = Buffer.alloc(slice.length);
-    for (let i = 0; i < slice.length; i++) {
-      out[i] = slice[i] ^ testKey[i % testKey.length];
-    }
-    const text = out.toString('utf-8');
-    if (text.includes('{') && text.includes('}')) {
+function tryAesDecrypt(cipherBytes, keyBuffer, ivBuffer) {
+  try {
+    const decipher = crypto.createDecipheriv('aes-128-cbc', keyBuffer, ivBuffer);
+    decipher.setAutoPadding(true);
+    let dec = decipher.update(cipherBytes);
+    dec = Buffer.concat([dec, decipher.final()]);
+    return JSON.parse(dec.toString('utf-8'));
+  } catch (e) {
+    try {
+      const decipher = crypto.createDecipheriv('aes-128-cbc', keyBuffer, ivBuffer);
+      decipher.setAutoPadding(false);
+      let dec = decipher.update(cipherBytes);
+      dec = Buffer.concat([dec, decipher.final()]);
+      const text = dec.toString('utf-8').replace(/[\x00-\x1F\x7F]/g, '').trim();
       const start = text.indexOf('{');
       const end = text.lastIndexOf('}') + 1;
-      try {
-        const parsed = JSON.parse(text.substring(start, end));
-        return { success: true, offset, key: testKey.toString('hex'), data: parsed };
-      } catch (e) {}
-    }
+      if (start !== -1 && end !== -1) {
+        return JSON.parse(text.substring(start, end));
+      }
+    } catch (err) {}
   }
-
-  return { success: false };
+  return null;
 }
 
 export default async function handler(req, res) {
@@ -72,29 +38,62 @@ export default async function handler(req, res) {
       }
     });
 
+    const headerT = response.headers.get("t") || response.headers.get("T") || "1787477198";
     const arrayBuf = await response.arrayBuffer();
     let textPayload;
+
     try {
       textPayload = zlib.gunzipSync(Buffer.from(arrayBuf)).toString('utf-8');
     } catch (e) {
       textPayload = Buffer.from(arrayBuf).toString('utf-8');
     }
 
-    const rawCipherBytes = Buffer.from(textPayload.trim(), 'base64');
-    const result = tryBruteDecode(rawCipherBytes);
+    const cipherBytes = Buffer.from(textPayload.trim(), 'base64');
 
-    if (result.success) {
-      return res.status(200).json({
-        status: "success",
-        matched_offset: result.offset,
-        matched_key: result.key,
-        data: result.data
-      });
+    // قائمة التجارب لتوليد مفاتيح الـ AES من T والمفاتيح الثابتة
+    const candidates = [
+      // 1. المفتاح الافتراضي مع IV مشتق من T
+      {
+        k: Buffer.from("fik@4!895.21?h*r", "utf-8"),
+        iv: Buffer.from(headerT.padEnd(16, '0').slice(0, 16), "utf-8")
+      },
+      // 2. المفتاح مشتق من MD5(T)
+      {
+        k: crypto.createHash('md5').update(headerT).digest(),
+        iv: Buffer.from("1234567890123456", "utf-8")
+      },
+      // 3. المفتاح مشتق من MD5(fik@... + T)
+      {
+        k: crypto.createHash('md5').update("fik@4!895.21?h*r" + headerT).digest(),
+        iv: Buffer.from("1234567890123456", "utf-8")
+      },
+      // 4. المفتاح الافتراضي والـ IV الثابت
+      {
+        k: Buffer.from("fik@4!895.21?h*r", "utf-8"),
+        iv: Buffer.from("1234567890123456", "utf-8")
+      },
+      // 5. مفتاح YTV الحديث
+      {
+        k: Buffer.from("yacinetvkey12345", "utf-8"),
+        iv: Buffer.from("1234567890123456", "utf-8")
+      }
+    ];
+
+    for (const item of candidates) {
+      const result = tryAesDecrypt(cipherBytes, item.k, item.iv);
+      if (result) {
+        return res.status(200).json({
+          status: "success",
+          header_t: headerT,
+          data: result
+        });
+      }
     }
 
-    return res.status(500).json({
-      status: "error",
-      message: "لم يتمكن من فك التشفير تلقائياً"
+    return res.status(200).json({
+      status: "trying_combinations",
+      header_t: headerT,
+      data_length: cipherBytes.length
     });
 
   } catch (error) {
