@@ -18,8 +18,8 @@ export default async function handler(req, res) {
 
     const contentType = response.headers.get('content-type') || '';
 
-    // إذا كان الطلب لقائمة تشغيل m3u8 نقوم بإعادة توجيه كل الروابط الداخلية للبروكسي
-    if (targetUrl.includes('.m3u8') || contentType.includes('mpegurl') || contentType.includes('application/x-mpegURL')) {
+    // معالجة ملفات القائمة m3u8 وإعادة كتابة مسارات قطع الفيديو لتمر عبر البروكسي
+    if (targetUrl.includes('.m3u8') || contentType.includes('mpegurl') || contentType.includes('application/vnd.apple.mpegurl')) {
       const text = await response.text();
       const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
 
@@ -38,10 +38,10 @@ export default async function handler(req, res) {
       return res.send(modifiedPlaylist);
     }
 
-    // إذا كان الطلب لقطعة فيديو (.js / .ts / .pdf) نرسلها مباشرة كبيانات
-    const buffer = await response.arrayBuffer();
+    // تمرير قطع الفيديو المباشرة (.ts)
+    const arrayBuf = await response.arrayBuffer();
     res.setHeader('Content-Type', 'video/MP2T');
-    return res.send(Buffer.from(buffer));
+    return res.send(Buffer.from(arrayBuf));
 
   } catch (err) {
     return res.status(500).send(err.message);
