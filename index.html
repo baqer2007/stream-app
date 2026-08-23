@@ -4,47 +4,41 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>بث مباشر - المشغل الرياضي</title>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
-    body { background-color: #0b0f19; color: #fff; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; }
-    .container { width: 100%; max-width: 850px; display: flex; flex-direction: column; gap: 16px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: #0b0f19; color: #fff; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 15px; }
+    .container { width: 100%; max-width: 850px; display: flex; flex-direction: column; gap: 15px; }
     .player-wrapper { position: relative; width: 100%; padding-top: 56.25%; background-color: #000; border-radius: 12px; overflow: hidden; border: 1px solid #1e293b; }
     video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; }
     .controls-card { background-color: #111827; border-radius: 12px; padding: 16px; border: 1px solid #1f2937; display: flex; flex-direction: column; gap: 12px; }
     .status-header { font-size: 1.1rem; font-weight: 600; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
     .status-dot { width: 10px; height: 10px; background-color: #22c55e; border-radius: 50%; box-shadow: 0 0 8px #22c55e; }
-    .channels-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+    .channels-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
     .channel-btn { background-color: #1f2937; color: #f3f4f6; border: 1px solid #374151; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; text-align: center; }
     .channel-btn:hover { background-color: #2563eb; }
-    .channel-btn.active { background-color: #0284c7; border-color: #38bdf8; }
+    .channel-btn.active { background-color: #0284c7; border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
   </style>
 </head>
 <body>
 
   <div class="container">
     <div class="player-wrapper">
-      <video id="videoPlayer" controls autoplay playsinline></video>
+      <video id="videoPlayer" controls playsinline></video>
     </div>
 
     <div class="controls-card">
       <div class="status-header">
         <span class="status-dot"></span>
-        <span id="channelName">اختر القناة</span>
+        <span id="channelName">beIN SPORTS HD</span>
       </div>
 
       <div class="channels-grid">
-        <button class="channel-btn active" onclick="playStream('https://d35j504z0xlocq.cloudfront.net/out/v1/9924df3dbbb648cf8daae25f0ad08b6f/index.m3u8', 'Red Bull TV الرياضية', this)">
+        <button class="channel-btn active" onclick="loadVideo('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', 'بث مباشر 1', this)">
+          سيرفر البث الرئيسي
+        </button>
+        <button class="channel-btn" onclick="loadVideo('https://d35j504z0xlocq.cloudfront.net/out/v1/9924df3dbbb648cf8daae25f0ad08b6f/index.m3u8', 'Red Bull TV الرياضية', this)">
           Red Bull TV
-        </button>
-        <button class="channel-btn" onclick="playStream('https://cdn-1.skyvegas.com/live/sports1/playlist.m3u8', 'Sports Direct Live', this)">
-          Sports HD
-        </button>
-        <button class="channel-btn" onclick="playStream('https://tv-trti.medya.trt.com.tr/live/trtspor/master.m3u8', 'TRT Spor HD (بث دولي)', this)">
-          TRT Spor
-        </button>
-        <button class="channel-btn" onclick="playStream('https://dmisports-lh.akamaihd.net/i/dmisportsextra_1@77823/master.m3u8', 'دبي الرياضية HD', this)">
-          دبي الرياضية
         </button>
       </div>
     </div>
@@ -54,30 +48,37 @@
     const video = document.getElementById('videoPlayer');
     let hls = null;
 
-    function playStream(rawUrl, title, btn) {
+    function loadVideo(url, name, btn) {
       if (btn) {
         document.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
       }
-      document.getElementById('channelName').innerText = title;
-
-      const finalUrl = `/api/stream?url=${encodeURIComponent(rawUrl)}`;
+      document.getElementById('channelName').innerText = name;
 
       if (Hls.isSupported()) {
         if (hls) hls.destroy();
-        hls = new Hls({ enableWorker: true, lowLatencyMode: true });
-        hls.loadSource(finalUrl);
+        hls = new Hls({
+          debug: false,
+          enableWorker: true
+        });
+        hls.loadSource(url);
         hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {
+          video.play().catch(function(error) {
+            console.log("Play failed, waiting for user click:", error);
+          });
+        });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = finalUrl;
-        video.play().catch(() => {});
+        video.src = url;
+        video.addEventListener('loadedmetadata', function() {
+          video.play().catch(() => {});
+        });
       }
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      const activeBtn = document.querySelector('.channel-btn.active');
-      if (activeBtn) activeBtn.click();
+    // التشغيل عند أول ضغطة للمستخدم لتجاوز حظر المتصفح
+    document.addEventListener('DOMContentLoaded', () => {
+      loadVideo('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', 'سيرفر البث الرئيسي');
     });
   </script>
 </body>
