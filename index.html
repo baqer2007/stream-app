@@ -3,367 +3,94 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>منصة البث الرياضي المباشر</title>
+  <title>منصة البث المباشر</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
-    :root {
-      --bg-dark: #0a0e17;
-      --card-bg: #131b2e;
-      --accent: #38bdf8;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: var(--bg-dark);
-      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #0a0e17;
+      color: #f8fafc;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
-      min-height: 100vh;
     }
     nav {
       background: #0f172a;
       border-bottom: 1px solid #1e293b;
-      padding: 14px 24px;
+      padding: 14px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .logo {
-      font-size: 1.25rem;
-      font-weight: 800;
-      color: var(--accent);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .badge-live {
-      background: #ef4444;
-      color: #fff;
-      font-size: 11px;
-      font-weight: bold;
-      padding: 3px 8px;
-      border-radius: 4px;
-    }
+    .logo { font-size: 1.1rem; font-weight: 800; color: #38bdf8; }
+    .badge-live { background: #ef4444; color: #fff; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; }
     .container {
-      display: grid;
-      grid-template-columns: 1fr 340px;
-      gap: 20px;
-      padding: 20px;
-      max-width: 1400px;
-      margin: 0 auto;
-      width: 100%;
-      flex: 1;
-    }
-    .player-section {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 15px;
+      padding: 15px;
+      max-width: 1000px;
+      margin: 0 auto;
+      width: 100%;
     }
-    .video-card {
+    .video-box {
       width: 100%;
       aspect-ratio: 16 / 9;
       background: #000;
-      border-radius: 12px;
+      border-radius: 10px;
       overflow: hidden;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
       border: 1px solid #1e293b;
-      position: relative;
     }
     video { width: 100%; height: 100%; display: block; object-fit: contain; }
-    .channel-info {
-      background: var(--card-bg);
-      padding: 16px 20px;
-      border-radius: 10px;
-      border: 1px solid #1e293b;
+    .info-box {
+      background: #131b2e;
+      padding: 14px;
+      border-radius: 8px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-    }
-    .channel-title { font-size: 1.2rem; font-weight: 700; }
-    .sidebar {
-      background: var(--card-bg);
-      border-radius: 12px;
       border: 1px solid #1e293b;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      height: fit-content;
-      max-height: 600px;
     }
-    .sidebar-header {
-      padding: 16px;
-      font-weight: 700;
-      border-bottom: 1px solid #1e293b;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .channel-list { list-style: none; overflow-y: auto; }
-    .channel-btn {
-      padding: 14px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    .channels { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .ch-btn {
+      background: #131b2e;
+      padding: 12px 16px;
+      border-radius: 8px;
       cursor: pointer;
-      border-bottom: 1px solid #1e293b;
-      transition: all 0.2s ease;
-    }
-    .channel-btn:hover { background: #1e293b; }
-    .channel-btn.active {
-      background: #1e293b;
-      border-right: 4px solid var(--accent);
-      color: var(--accent);
-    }
-    .channel-btn i { font-size: 16px; width: 20px; text-align: center; }
-    @media (max-width: 900px) {
-      .container { grid-template-columns: 1fr; }
-    }
-  </style>
-</head>
-<body>
-
-  <nav>
-    <div class="logo">
-      <i class="fa-solid fa-tower-broadcast"></i>
-      <span>LIVE SPORT TV</span>
-    </div>
-    <div class="badge-live">LIVE 24/7</div>
-  </nav>
-
-  <div class="container">
-    <div class="player-section">
-      <div class="video-card">
-        <!-- تفعيل muted مبدئياً لضمان بدء البث بدون حظر المتصفح -->
-        <video id="videoPlayer" controls autoplay muted playsinline></video>
-      </div>
-      <div class="channel-info">
-        <div class="channel-title" id="currentTitle">اختر قناة للتشغيل</div>
-        <div style="font-size: 13px; color: var(--text-muted);" id="statusIndicator">جاهز</div>
-      </div>
-    </div>
-
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <i class="fa-solid fa-list-ul"></i> قائمة القنوات المباشرة
-      </div>
-      <ul class="channel-list" id="channelList"></ul>
-    </div>
-  </div>
-
-  <script>
-    const channels = [
-      {
-        name: "قناة البث الرياضي الملتقطة (Proxy Engine)",
-        url: "http://h35.zenvion.online/live/31009988005/index.m3u8?t=qVbwIgonsa0bO2FygXtz2Q&e=1787466309",
-        referer: "https://x.com/",
-        useProxy: true
-      },
-      {
-        name: "قناة Red Bull TV الرياضية",
-        url: "https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8",
-        referer: "",
-        useProxy: false
-      },
-      {
-        name: "قناة TRT World العالمية",
-        url: "https://tv-trtworld.medya.trt.com.tr/master.m3u8",
-        referer: "",
-        useProxy: false
-      }
-    ];
-
-    const video = document.getElementById('videoPlayer');
-    const channelListEl = document.getElementById('channelList');
-    const currentTitleEl = document.getElementById('currentTitle');
-    const statusIndicator = document.getElementById('statusIndicator');
-    let hlsInstance = null;
-    let activeIndex = 0;
-
-    function renderList() {
-      channelListEl.innerHTML = "";
-      channels.forEach((ch, idx) => {
-        const li = document.createElement('li');
-        li.className = `channel-btn ${idx === activeIndex ? 'active' : ''}`;
-        li.onclick = () => loadChannel(idx);
-        li.innerHTML = `<i class="fa-solid fa-play"></i> <span>${ch.name}</span>`;
-        channelListEl.appendChild(li);
-      });
-    }
-
-    function loadChannel(index) {
-      activeIndex = index;
-      const target = channels[index];
-      currentTitleEl.innerText = target.name;
-      statusIndicator.innerText = "جاري الاتصال بالسيرفر...";
-      renderList();
-
-      if (hlsInstance) hlsInstance.destroy();
-
-      const streamUrl = target.useProxy 
-        ? `/api/stream?ref=${encodeURIComponent(target.referer)}&url=${encodeURIComponent(target.url)}` 
-        : target.url;
-
-      if (Hls.isSupported()) {
-        hlsInstance = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true,
-          backBufferLength: 90
-        });
-
-        hlsInstance.loadSource(streamUrl);
-        hlsInstance.attachMedia(video);
-
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-          statusIndicator.innerText = "متصل - اضغط لإلغاء كتم الصوت";
-          video.play().catch(e => console.log('Autoplay error:', e));
-        });
-
-        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
-            statusIndicator.innerText = "انتهت صلاحية السيرفر أو توقف المصدر";
-          }
-        });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = streamUrl;
-      }
-    }
-
-    renderList();
-    loadChannel(0);
-  </script>
-</body>
-</html>
-      font-weight: 800;
-      color: var(--accent);
       display: flex;
       align-items: center;
       gap: 10px;
-    }
-    .badge-live {
-      background: #ef4444;
-      color: #fff;
-      font-size: 11px;
-      font-weight: bold;
-      padding: 3px 8px;
-      border-radius: 4px;
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.5; }
-      100% { opacity: 1; }
-    }
-    .container {
-      display: grid;
-      grid-template-columns: 1fr 340px;
-      gap: 20px;
-      padding: 20px;
-      max-width: 1400px;
-      margin: 0 auto;
-      width: 100%;
-      flex: 1;
-    }
-    .player-section {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .video-card {
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      background: #000;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
       border: 1px solid #1e293b;
     }
-    video { width: 100%; height: 100%; display: block; }
-    .channel-info {
-      background: var(--card-bg);
-      padding: 16px 20px;
-      border-radius: 10px;
-      border: 1px solid #1e293b;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .channel-title { font-size: 1.2rem; font-weight: 700; }
-    .sidebar {
-      background: var(--card-bg);
-      border-radius: 12px;
-      border: 1px solid #1e293b;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      height: fit-content;
-      max-height: 600px;
-    }
-    .sidebar-header {
-      padding: 16px;
-      font-weight: 700;
-      border-bottom: 1px solid #1e293b;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .channel-list { list-style: none; overflow-y: auto; }
-    .channel-btn {
-      padding: 14px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      cursor: pointer;
-      border-bottom: 1px solid #1e293b;
-      transition: all 0.2s ease;
-    }
-    .channel-btn:hover { background: #1e293b; }
-    .channel-btn.active {
-      background: #1e293b;
-      border-right: 4px solid var(--accent);
-      color: var(--accent);
-    }
-    .channel-btn i { font-size: 16px; width: 20px; text-align: center; }
-    @media (max-width: 900px) {
-      .container { grid-template-columns: 1fr; }
-    }
+    .ch-btn.active { border-color: #38bdf8; color: #38bdf8; background: #1e293b; }
   </style>
 </head>
 <body>
 
   <nav>
-    <div class="logo">
-      <i class="fa-solid fa-tower-broadcast"></i>
-      <span>LIVE SPORT TV</span>
-    </div>
-    <div class="badge-live">LIVE 24/7</div>
+    <div class="logo"><i class="fa-solid fa-tower-broadcast"></i> LIVE SPORT TV</div>
+    <div class="badge-live">LIVE</div>
   </nav>
 
   <div class="container">
-    <div class="player-section">
-      <div class="video-card">
-        <video id="videoPlayer" controls autoplay playsinline></video>
-      </div>
-      <div class="channel-info">
-        <div class="channel-title" id="currentTitle">اختر قناة للتشغيل</div>
-        <div style="font-size: 13px; color: var(--text-muted);" id="statusIndicator">جاهز</div>
-      </div>
+    <div class="video-box">
+      <video id="videoPlayer" controls playsinline></video>
     </div>
 
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <i class="fa-solid fa-list-ul"></i> قائمة القنوات المباشرة
-      </div>
-      <ul class="channel-list" id="channelList"></ul>
+    <div class="info-box">
+      <div id="channelTitle" style="font-weight: bold;">اختر قناة</div>
+      <div id="status" style="font-size: 12px; color: #38bdf8;">جاهز</div>
     </div>
+
+    <ul class="channels" id="channelList"></ul>
   </div>
 
   <script>
     const channels = [
       {
-        name: "قناة البث الرياضي الملتقطة (Proxy Engine)",
+        name: "قناة YTV PRO الملتقطة",
         url: "http://h35.zenvion.online/live/31009988005/index.m3u8?t=qVbwIgonsa0bO2FygXtz2Q&e=1787466309",
         referer: "https://x.com/",
         useProxy: true
@@ -371,75 +98,67 @@
       {
         name: "قناة Red Bull TV الرياضية",
         url: "https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8",
-        referer: "",
         useProxy: false
       },
       {
-        name: "قناة TRT World العالمية",
+        name: "قناة TRT World الإخبارية",
         url: "https://tv-trtworld.medya.trt.com.tr/master.m3u8",
-        referer: "",
         useProxy: false
       }
     ];
 
     const video = document.getElementById('videoPlayer');
-    const channelListEl = document.getElementById('channelList');
-    const currentTitleEl = document.getElementById('currentTitle');
-    const statusIndicator = document.getElementById('statusIndicator');
-    let hlsInstance = null;
-    let activeIndex = 0;
+    const channelList = document.getElementById('channelList');
+    const channelTitle = document.getElementById('channelTitle');
+    const status = document.getElementById('status');
+    let hls = null;
 
-    function renderList() {
-      channelListEl.innerHTML = "";
+    function renderList(activeIdx) {
+      channelList.innerHTML = '';
       channels.forEach((ch, idx) => {
         const li = document.createElement('li');
-        li.className = `channel-btn ${idx === activeIndex ? 'active' : ''}`;
-        li.onclick = () => loadChannel(idx);
+        li.className = `ch-btn ${idx === activeIdx ? 'active' : ''}`;
         li.innerHTML = `<i class="fa-solid fa-play"></i> <span>${ch.name}</span>`;
-        channelListEl.appendChild(li);
+        li.onclick = () => play(idx);
+        channelList.appendChild(li);
       });
     }
 
-    function loadChannel(index) {
-      activeIndex = index;
-      const target = channels[index];
-      currentTitleEl.innerText = target.name;
-      statusIndicator.innerText = "جاري الاتصال بالسيرفر...";
-      renderList();
+    function play(idx) {
+      renderList(idx);
+      const ch = channels[idx];
+      channelTitle.innerText = ch.name;
+      status.innerText = "جاري الاتصال...";
 
-      if (hlsInstance) hlsInstance.destroy();
+      if (hls) hls.destroy();
 
-      // توجيه الطلب عبر وسيط Vercel السحابي الداخلي إذا كانت القناة تتطلب حماية
-      const streamUrl = target.useProxy 
-        ? `/api/stream?ref=${encodeURIComponent(target.referer)}&url=${encodeURIComponent(target.url)}` 
-        : target.url;
+      const streamUrl = ch.useProxy 
+        ? `/api/stream?ref=${encodeURIComponent(ch.referer)}&url=${encodeURIComponent(ch.url)}` 
+        : ch.url;
 
       if (Hls.isSupported()) {
-        hlsInstance = new Hls({
+        hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true
         });
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
 
-        hlsInstance.loadSource(streamUrl);
-        hlsInstance.attachMedia(video);
-
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-          statusIndicator.innerText = "متصل - البث مباشر";
-          video.play().catch(e => console.log(e));
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          status.innerText = "البث مباشر";
+          video.play().catch(() => {});
         });
 
-        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
-            statusIndicator.innerText = "انتهت صلاحية السيرفر أو توقف المصدر";
-          }
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) status.innerText = "انتهى التوكن أو توقف السيرفر";
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = streamUrl;
       }
     }
 
-    renderList();
-    loadChannel(0);
+    renderList(0);
+    play(0);
   </script>
 </body>
 </html>
