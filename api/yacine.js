@@ -1,65 +1,79 @@
 import zlib from 'zlib';
+import crypto from 'crypto';
 
-function solveExactYacineJSON(cipherBytes) {
-  // المفتاح القياسي المستنتج 8 بايت
-  const knownPrefix = '{"id":44,"name":';
-  const derivedKey = Buffer.alloc(knownPrefix.length);
+// 1. خوارزمية RC4 القياسية
+function rc4Decrypt(key, cipherBytes) {
+  const s = [];
+  for (let i = 0; i < 256; i++) s[i] = i;
 
-  for (let i = 0; i < knownPrefix.length; i++) {
-    derivedKey[i] = cipherBytes[i] ^ knownPrefix.charCodeAt(i);
+  let j = 0;
+  for (let i = 0; i < 256; i++) {
+    j = (j + s[i] + key[i % key.length]) % 256;
+    [s[i], s[j]] = [s[j], s[i]];
   }
 
-  // تجربة فك الشفرة بأطوال دورية للمفتاح المشتق
-  const keyLengths = [8, 12, 16, 24, 32, derivedKey.length];
-
-  for (const kLen of keyLengths) {
-    const k = derivedKey.subarray(0, kLen);
-    const out = Buffer.alloc(cipherBytes.length);
-    for (let i = 0; i < cipherBytes.length; i++) {
-      out[i] = cipherBytes[i] ^ k[i % kLen];
-    }
-
-    const text = out.toString('utf-8');
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}') + 1;
-
-    if (start !== -1 && end > start) {
-      try {
-        const json = JSON.parse(text.substring(start, end));
-        return { success: true, json };
-      } catch (e) {}
-    }
-  }
-
-  // تجربة البحث التبادلي الشامل لجميع توافيق 8 بايت المحيطة
-  const base8 = Buffer.from([0x63, 0x21, 0x75, 0x5f, 0x3c, 0x70, 0x58, 0x37]);
-  for (let delta = -16; delta <= 16; delta++) {
-    const testK = Buffer.alloc(8);
-    for (let i = 0; i < 8; i++) testK[i] = (base8[i] + delta) & 0xFF;
-
-    const out = Buffer.alloc(cipherBytes.length);
-    for (let i = 0; i < cipherBytes.length; i++) {
-      out[i] = cipherBytes[i] ^ testK[i % 8];
-    }
-
-    const text = out.toString('utf-8');
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}') + 1;
-    if (start !== -1 && end > start) {
-      try {
-        const json = JSON.parse(text.substring(start, end));
-        return { success: true, json };
-      } catch (e) {}
-    }
-  }
-
-  // استخراج النص الأقرب في حال وجود شوائب طفيفة
+  let i = 0;
+  j = 0;
   const out = Buffer.alloc(cipherBytes.length);
-  for (let i = 0; i < cipherBytes.length; i++) {
-    out[i] = cipherBytes[i] ^ derivedKey[i % derivedKey.length];
+
+  for (let k = 0; k < cipherBytes.length; k++) {
+    i = (i + 1) % 256;
+    j = (j + s[i]) % 256;
+    [s[i], s[j]] = [s[j], s[i]];
+    const t = (s[i] + s[j]) % 256;
+    out[k] = cipherBytes[k] ^ s[t];
   }
 
-  return { success: false, rawText: out.toString('utf-8') };
+  return out;
+}
+
+// 2. خوارزمية فك التشفير التراكمي الشاملة لتطبيق ياسين تيفي
+function solveYacineRC4AndRolling(cipherBytes, headerT) {
+  const tStr = String(headerT || "1787484688");
+  
+  const keyCandidates = [
+    Buffer.from("fik@4!895.21?h*r"),
+    Buffer.from("yacinetvkey12345"),
+    Buffer.from("c!u_fik@4!895.21"),
+    Buffer.from(tStr),
+    Buffer.from("1234567890123456"),
+    crypto.createHash('md5').update("fik@4!895.21?h*r").digest(),
+    crypto.createHash('md5').update("fik@4!895.21?h*r" + tStr).digest(),
+    crypto.createHash('md5').update(tStr).digest()
+  ];
+
+  // أ. تجربة خوارزمية RC4 مع كافة المفاتيح
+  for (const k of keyCandidates) {
+    const dec = rc4Decrypt(k, cipherBytes);
+    const text = dec.toString('utf-8');
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}') + 1;
+    if (start !== -1 && end > start) {
+      try {
+        return { success: true, method: 'rc4', data: JSON.parse(text.substring(start, end)) };
+      } catch (e) {}
+    }
+  }
+
+  // ب. تجربة توليد تدفق المفتاح عبر Linear Feedback Shift (LFSR)
+  for (let step = 1; step <= 255; step++) {
+    const out = Buffer.alloc(cipherBytes.length);
+    let currentKey = 0x63; // البايت الأول المؤكد
+    for (let i = 0; i < cipherBytes.length; i++) {
+      out[i] = cipherBytes[i] ^ currentKey;
+      currentKey = (currentKey + step) & 0xFF;
+    }
+    const text = out.toString('utf-8');
+    if (text.includes('"id"') && (text.includes('"url"') || text.includes('http'))) {
+      const start = text.indexOf('{');
+      const end = text.lastIndexOf('}') + 1;
+      try {
+        return { success: true, method: 'lfsr', data: JSON.parse(text.substring(start, end)) };
+      } catch (e) {}
+    }
+  }
+
+  return { success: false };
 }
 
 export default async function handler(req, res) {
@@ -78,7 +92,9 @@ export default async function handler(req, res) {
       }
     });
 
+    const headerT = response.headers.get("t") || response.headers.get("T") || "";
     const rawBuffer = await response.arrayBuffer();
+
     let textPayload;
     try {
       textPayload = zlib.gunzipSync(Buffer.from(rawBuffer)).toString('utf-8');
@@ -87,19 +103,24 @@ export default async function handler(req, res) {
     }
 
     const cipherBytes = Buffer.from(textPayload.trim(), 'base64');
-    const result = solveExactYacineJSON(cipherBytes);
+    const result = solveYacineRC4AndRolling(cipherBytes, headerT);
 
     if (result.success) {
       return res.status(200).json({
         status: "success",
         channel_id: channelId,
-        data: result.json
+        header_t: headerT,
+        method: result.method,
+        data: result.data
       });
     }
 
+    // تجربة الـ RC4 الأولى وعرض العينة
+    const testDec = rc4Decrypt(Buffer.from("fik@4!895.21?h*r"), cipherBytes);
     return res.status(200).json({
-      status: "almost_there",
-      decoded_text: result.rawText.substring(0, 150)
+      status: "trying_rc4",
+      header_t: headerT,
+      rc4_sample: testDec.subarray(0, 80).toString('utf-8')
     });
 
   } catch (error) {
