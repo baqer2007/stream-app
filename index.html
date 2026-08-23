@@ -3,109 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>بث مباشر - قنوات رياضية</title>
+  <title>بث مباشر - المشغل الرياضي</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-
-    body {
-      background-color: #0b0f19;
-      color: #ffffff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      padding: 20px;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 850px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .player-wrapper {
-      position: relative;
-      width: 100%;
-      padding-top: 56.25%;
-      background-color: #000000;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid #1e293b;
-    }
-
-    video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-
-    .controls-card {
-      background-color: #111827;
-      border-radius: 12px;
-      padding: 16px;
-      border: 1px solid #1f2937;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .status-header {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: #38bdf8;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      background-color: #22c55e;
-      border-radius: 50%;
-      box-shadow: 0 0 8px #22c55e;
-    }
-
-    .channels-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 10px;
-    }
-
-    .channel-btn {
-      background-color: #1f2937;
-      color: #f3f4f6;
-      border: 1px solid #374151;
-      padding: 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.95rem;
-      transition: all 0.2s ease;
-      text-align: center;
-    }
-
-    .channel-btn:hover {
-      background-color: #2563eb;
-      border-color: #3b82f6;
-    }
-
-    .channel-btn.active {
-      background-color: #0284c7;
-      border-color: #38bdf8;
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+    body { background-color: #0b0f19; color: #fff; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; }
+    .container { width: 100%; max-width: 850px; display: flex; flex-direction: column; gap: 16px; }
+    .player-wrapper { position: relative; width: 100%; padding-top: 56.25%; background-color: #000; border-radius: 12px; overflow: hidden; border: 1px solid #1e293b; }
+    video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; }
+    .controls-card { background-color: #111827; border-radius: 12px; padding: 16px; border: 1px solid #1f2937; display: flex; flex-direction: column; gap: 12px; }
+    .status-header { font-size: 1.1rem; font-weight: 600; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
+    .status-dot { width: 10px; height: 10px; background-color: #22c55e; border-radius: 50%; box-shadow: 0 0 8px #22c55e; }
+    .channels-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+    .channel-btn { background-color: #1f2937; color: #f3f4f6; border: 1px solid #374151; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; text-align: center; }
+    .channel-btn:hover { background-color: #2563eb; }
+    .channel-btn.active { background-color: #0284c7; border-color: #38bdf8; }
   </style>
 </head>
 <body>
@@ -118,12 +30,18 @@
     <div class="controls-card">
       <div class="status-header">
         <span class="status-dot"></span>
-        <span id="channelName">beIN SPORTS 1 HD</span>
+        <span id="channelName">اختر القناة</span>
       </div>
 
       <div class="channels-grid">
-        <button class="channel-btn active" onclick="playChannel('http://h31.proxira.buzz/live/31009988005/index.m3u8?t=Ft19A40T-UTyUuBAJIa7Pg&e=1787501350', 'beIN SPORTS 1 HD', this)">
-          beIN SPORTS 1 HD
+        <button class="channel-btn active" onclick="playStream('https://stream.ecable.tv/live/bein1/playlist.m3u8', 'beIN SPORTS 1 HD (سيرفر مباشر)', this)">
+          beIN 1 HD
+        </button>
+        <button class="channel-btn" onclick="playStream('https://stream.ecable.tv/live/bein2/playlist.m3u8', 'beIN SPORTS 2 HD (سيرفر مباشر)', this)">
+          beIN 2 HD
+        </button>
+        <button class="channel-btn" onclick="playStream('https://stream.ecable.tv/live/ssc1/playlist.m3u8', 'SSC 1 HD (سيرفر مباشر)', this)">
+          SSC 1 HD
         </button>
       </div>
     </div>
@@ -133,14 +51,14 @@
     const video = document.getElementById('videoPlayer');
     let hls = null;
 
-    function playChannel(streamUrl, name, btn) {
+    function playStream(rawUrl, title, btn) {
       if (btn) {
         document.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
       }
-      document.getElementById('channelName').innerText = name;
+      document.getElementById('channelName').innerText = title;
 
-      const finalUrl = `/api/stream?url=${encodeURIComponent(streamUrl)}`;
+      const finalUrl = `/api/stream?url=${encodeURIComponent(rawUrl)}`;
 
       if (Hls.isSupported()) {
         if (hls) hls.destroy();
