@@ -10,9 +10,8 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: system-ui, -apple-system, sans-serif;
     }
-
     body {
       background-color: #070d18;
       color: #ffffff;
@@ -22,7 +21,6 @@
       min-height: 100vh;
       padding: 16px;
     }
-
     .container {
       width: 100%;
       max-width: 800px;
@@ -30,14 +28,12 @@
       flex-direction: column;
       gap: 14px;
     }
-
     .top-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 6px 4px;
     }
-
     .live-badge {
       background-color: #ef4444;
       color: #ffffff;
@@ -45,18 +41,12 @@
       font-size: 0.75rem;
       padding: 3px 8px;
       border-radius: 4px;
-      letter-spacing: 1px;
     }
-
     .app-title {
       font-size: 1.2rem;
       font-weight: 800;
       color: #38bdf8;
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
-
     .player-container {
       position: relative;
       width: 100%;
@@ -65,9 +55,7 @@
       border-radius: 14px;
       overflow: hidden;
       border: 1px solid #1e293b;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
     }
-
     video {
       position: absolute;
       top: 0;
@@ -76,7 +64,6 @@
       height: 100%;
       object-fit: contain;
     }
-
     .status-box {
       background-color: #0f172a;
       border: 1px solid #1e293b;
@@ -89,13 +76,11 @@
       font-weight: 600;
       color: #38bdf8;
     }
-
     .channels-list {
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
-
     .channel-item {
       background-color: #0f172a;
       color: #e2e8f0;
@@ -108,23 +93,11 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: all 0.2s ease;
     }
-
-    .channel-item:hover {
-      background-color: #1e293b;
-      border-color: #38bdf8;
-    }
-
     .channel-item.active {
       background-color: #0284c7;
       border-color: #38bdf8;
       color: #ffffff;
-      box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
-    }
-
-    .play-icon {
-      font-size: 0.8rem;
     }
   </style>
 </head>
@@ -141,29 +114,24 @@
     </div>
 
     <div class="status-box">
-      <span id="currentStatus">جاري تجهيز البث...</span>
+      <span id="currentStatus">جاري تشغيل البث...</span>
       <span style="color: #22c55e;">● مباشر</span>
     </div>
 
     <div class="channels-list">
-      <button class="channel-item active" onclick="playChannel('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', 'بث تجريبي رياضي HD 1', this)">
-        <span>بث تجريبي رياضي HD</span>
-        <span class="play-icon">◀</span>
-      </button>
-
-      <button class="channel-item" onclick="playChannel('https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8', 'قناة Red Bull TV الرياضية', this)">
+      <button class="channel-item active" onclick="playChannel('https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8', 'Red Bull TV المباشرة 🔴', this)">
         <span>قناة Red Bull TV الرياضية</span>
-        <span class="play-icon">◀</span>
+        <span>◀</span>
       </button>
 
-      <button class="channel-item" onclick="playChannel('https://cph-p2p-msl.akamaized.net/hls/live/200034/test/master.m3u8', 'قناة الرياضة والأحداث الكبرى', this)">
-        <span>قناة الأحداث الكبرى Akamai</span>
-        <span class="play-icon">◀</span>
+      <button class="channel-item" onclick="playChannel('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', 'بث رياضي تجريبي HD', this)">
+        <span>بث رياضي تجريبي HD</span>
+        <span>◀</span>
       </button>
 
-      <button class="channel-item" onclick="playChannel('https://d2e1asnslrmhmn.cloudfront.net/out/v1/4b9e0986e579414ca5529f796ef53524/index.m3u8', 'قناة البث الإخباري Bloomberg', this)">
-        <span>قناة Bloomberg العالمية</span>
-        <span class="play-icon">◀</span>
+      <button class="channel-item" onclick="playChannel('https://cph-p2p-msl.akamaized.net/hls/live/200034/test/master.m3u8', 'Akamai Sports Event', this)">
+        <span>بث الأحداث المباشرة HD</span>
+        <span>◀</span>
       </button>
     </div>
   </div>
@@ -186,7 +154,7 @@
         hls.loadSource(url);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.play().catch(err => console.log('Autoplay prevented:', err));
+          video.play().catch(e => console.log(e));
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = url;
