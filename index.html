@@ -3,483 +3,183 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>سينما بلس VIP | البوابة السينمائية</title>
+  <title>سينما بلس VIP</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
       --primary: #e50914;
-      --primary-hover: #b80710;
       --bg-main: #0a0e17;
       --bg-card: #131b2e;
-      --bg-glass: rgba(19, 27, 46, 0.8);
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --accent: #38bdf8;
       --gold: #fbbf24;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-main); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-    body {
-      background-color: var(--bg-main);
-      color: var(--text-main);
-      overflow-x: hidden;
-    }
-
-    /* شريط التنقل العلوي */
-    nav {
-      position: fixed;
+    header {
+      background: rgba(15, 23, 42, 0.95);
+      padding: 16px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #1e293b;
+      position: sticky;
       top: 0;
-      width: 100%;
-      height: 70px;
-      padding: 0 40px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: linear-gradient(180deg, rgba(10,14,23,0.95) 0%, rgba(10,14,23,0) 100%);
+      z-index: 50;
       backdrop-filter: blur(8px);
-      z-index: 100;
-      transition: background 0.3s;
     }
 
-    .nav-logo {
-      font-size: 1.6rem;
-      font-weight: 900;
-      color: var(--primary);
-      letter-spacing: 1px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .logo { font-size: 1.4rem; font-weight: 900; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+    .search-box { position: relative; width: 40%; max-width: 350px; }
+    .search-box input { width: 100%; padding: 10px 38px 10px 16px; border-radius: 20px; border: 1px solid #334155; background: #1e293b; color: #fff; outline: none; }
+    .search-box i { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
 
-    .nav-search {
-      position: relative;
-      width: 320px;
-    }
+    .container { max-width: 1300px; margin: 0 auto; padding: 24px; width: 100%; flex: 1; }
+    .section-title { font-size: 1.3rem; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    .section-title::before { content: ''; width: 4px; height: 20px; background: var(--primary); border-radius: 2px; }
 
-    .nav-search input {
-      width: 100%;
-      padding: 10px 40px 10px 16px;
-      border-radius: 25px;
-      border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.06);
-      color: #fff;
-      font-size: 0.9rem;
-      outline: none;
-      transition: all 0.3s;
-    }
-
-    .nav-search input:focus {
-      border-color: var(--primary);
-      background: rgba(255,255,255,0.12);
-      box-shadow: 0 0 15px rgba(229, 9, 20, 0.3);
-    }
-
-    .nav-search i {
-      position: absolute;
-      right: 15px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-muted);
-    }
-
-    /* البانر السينمائي الرئيسي (Hero Section) */
-    .hero {
-      position: relative;
-      height: 75vh;
-      display: flex;
-      align-items: center;
-      padding: 0 50px;
-      background: linear-gradient(90deg, #0a0e17 25%, rgba(10,14,23,0.6) 60%, rgba(10,14,23,0.1) 100%),
-                  url('https://image.tmdb.org/t/p/original/9BBTo63ANSmAgCva6F3R6v6Y9BP.jpg') center/cover;
-      margin-bottom: 20px;
-    }
-
-    .hero-content {
-      max-width: 550px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      z-index: 2;
-    }
-
-    .hero-badge {
-      align-self: flex-start;
-      background: var(--primary);
-      color: #fff;
-      font-size: 0.8rem;
-      font-weight: 700;
-      padding: 4px 12px;
-      border-radius: 4px;
-    }
-
-    .hero-title {
-      font-size: 2.8rem;
-      font-weight: 900;
-      line-height: 1.15;
-    }
-
-    .hero-meta {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      font-size: 0.95rem;
-      color: var(--text-muted);
-    }
-
-    .hero-rating {
-      color: var(--gold);
-      font-weight: 700;
-    }
-
-    .hero-desc {
-      font-size: 0.95rem;
-      line-height: 1.6;
-      color: #cbd5e1;
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .hero-btn {
-      align-self: flex-start;
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      padding: 12px 28px;
-      border-radius: 6px;
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: 0.2s;
-    }
-
-    .hero-btn:hover {
-      background: var(--primary-hover);
-      transform: scale(1.04);
-    }
-
-    /* مساحة إعلاناتك الخاصة أنت فقط */
-    .custom-ad-slot {
-      max-width: 1200px;
-      margin: 10px auto 30px auto;
-      padding: 14px;
-      border-radius: 8px;
-      background: linear-gradient(90deg, rgba(229,9,20,0.1), rgba(56,189,248,0.1));
-      border: 1px dashed rgba(255,255,255,0.2);
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.85rem;
-    }
-
-    /* شبكة التصنيفات والأفلام */
-    .content-container {
-      max-width: 1300px;
-      margin: 0 auto;
-      padding: 0 30px 60px 30px;
-    }
-
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin: 30px 0 16px 0;
-    }
-
-    .section-title {
-      font-size: 1.35rem;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .section-title::before {
-      content: '';
-      width: 4px;
-      height: 20px;
-      background: var(--primary);
-      border-radius: 2px;
-    }
-
-    .grid-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 20px;
-    }
-
-    /* كرت الفيلم */
-    .film-card {
-      position: relative;
+    .movies-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
+    .movie-card {
       background: var(--bg-card);
       border-radius: 10px;
       overflow: hidden;
       cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       border: 1px solid rgba(255,255,255,0.05);
-    }
-
-    .film-card:hover {
-      transform: translateY(-8px);
-      border-color: rgba(229, 9, 20, 0.5);
-      box-shadow: 0 12px 25px rgba(0,0,0,0.5);
-    }
-
-    .film-poster-wrap {
-      position: relative;
-      width: 100%;
-      height: 260px;
-      background: #000;
-    }
-
-    .film-poster {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .film-quality {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      background: rgba(0,0,0,0.75);
-      color: var(--accent);
-      font-size: 0.7rem;
-      font-weight: 800;
-      padding: 2px 6px;
-      border-radius: 4px;
-      border: 1px solid var(--accent);
-    }
-
-    .film-details {
-      padding: 12px;
+      transition: transform 0.2s, border-color 0.2s;
       display: flex;
       flex-direction: column;
-      gap: 6px;
     }
+    .movie-card:hover { transform: translateY(-6px); border-color: var(--primary); }
 
-    .film-name {
-      font-size: 0.95rem;
-      font-weight: 700;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .poster-box { position: relative; width: 100%; height: 260px; background: #050811; }
+    .movie-poster { width: 100%; height: 100%; object-fit: cover; }
+    .quality-badge { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.8); color: var(--accent); font-size: 0.7rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; }
 
-    .film-stats {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
+    .movie-info { padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .movie-title { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .movie-meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); }
 
-    /* مشغل الفيديو السينمائي الخاص */
-    .player-modal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.94);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
+    /* نافذة المشغل */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    .modal.active { display: flex; }
+    .modal-box { background: #000; width: 100%; max-width: 950px; border-radius: 12px; overflow: hidden; border: 1px solid #334155; }
+    .modal-header { background: #1e293b; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .close-btn { background: none; border: none; color: #fff; font-size: 1.4rem; cursor: pointer; }
 
-    .player-modal.active {
-      display: flex;
-    }
-
-    .player-box {
-      background: #000;
-      width: 100%;
-      max-width: 1000px;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.1);
-      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-    }
-
-    .player-bar {
-      background: var(--bg-card);
-      padding: 14px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .player-close {
-      background: none;
-      border: none;
-      color: #fff;
-      font-size: 1.4rem;
-      cursor: pointer;
-    }
-
-    video {
-      width: 100%;
-      height: 520px;
-      outline: none;
-      background: #000;
-    }
+    video { width: 100%; height: 500px; background: #000; outline: none; }
   </style>
 </head>
 <body>
 
-  <!-- شريط الملاحة -->
-  <nav>
-    <div class="nav-logo">
-      <i class="fa-solid fa-play"></i>
-      <span>CINEMA PLUS</span>
-    </div>
-    <div class="nav-search">
+  <header>
+    <div class="logo"><i class="fa-solid fa-film"></i> CINEMA PLUS</div>
+    <div class="search-box">
       <i class="fa-solid fa-magnifying-glass"></i>
-      <input type="text" id="movieSearch" placeholder="ابحث عن أفلامك المفضلة..." oninput="searchLibrary()">
+      <input type="text" id="searchInput" placeholder="ابحث في مكتبة الأفلام..." oninput="filterMovies()">
     </div>
-  </nav>
+  </header>
 
-  <!-- البانر الترويجي الكبير -->
-  <section class="hero" id="heroSection">
-    <div class="hero-content">
-      <span class="hero-badge">الأعلى مشاهدة اليوم</span>
-      <h1 class="hero-title" id="heroTitle">جاري التحميل...</h1>
-      <div class="hero-meta">
-        <span class="hero-rating"><i class="fa-solid fa-star"></i> <span id="heroRating">9.2</span></span>
-        <span id="heroYear">2026</span>
-        <span>Ultra HD 4K</span>
+  <div class="container">
+    <div class="section-title">أحدث الأفلام المتاحة للتشغيل</div>
+    <div class="movies-grid" id="moviesGrid">
+      <div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-muted);">
+        <i class="fa-solid fa-circle-notch fa-spin fa-2x"></i>
+        <p style="margin-top: 15px;">جاري الاتصال بالسيرفر وجلب الأفلام...</p>
       </div>
-      <p class="hero-desc" id="heroDesc">استمتع بتجربة سينمائية فريدة من نوعها مع مكتبتك الخاصة الخالية تماماً من الإعلانات المشبوهة والمنبثقة.</p>
-      <button class="hero-btn" onclick="playHeroMovie()"><i class="fa-solid fa-play"></i> شاهد الآن مجاناً</button>
     </div>
-  </section>
-
-  <!-- مساحة إعلاناتك الشخصية -->
-  <div class="custom-ad-slot">
-    <span>💡 مساحة إعلانية خاصة بموقعك (تحكم بها وضع بنراتك أو عروضك الخاصة هنا بدون تدخل أي طرف ثالث).</span>
   </div>
 
-  <!-- شبكة الأفلام -->
-  <div class="content-container">
-    <div class="section-header">
-      <div class="section-title" id="shelfTitle">أحدث الأفلام المضافة</div>
-    </div>
-    <div class="grid-row" id="movieGrid"></div>
-  </div>
-
-  <!-- المشغل الخاص المباشر بدون طرف ثالث -->
-  <div class="player-modal" id="cinemaPlayer">
-    <div class="player-box">
-      <div class="player-bar">
-        <span id="currentFilmTitle" style="font-weight: 700; color: var(--accent);">تشغيل الفيلم</span>
-        <button class="player-close" onclick="stopPlayer()">&times;</button>
+  <div class="modal" id="playerModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="playerTitle" style="font-weight: 700; color: var(--accent);">مشاهدة الفيلم</span>
+        <button class="close-btn" onclick="closePlayer()">&times;</button>
       </div>
-      <video id="nativeVideoPlayer" controls playsinline></video>
+      <video id="videoPlayer" controls playsinline></video>
     </div>
   </div>
 
   <script>
-    // بيانات السيرفر الخاص بك (الـ Xtream المستخرج)
-    const SERVER_CONFIG = {
-      base: "http://forevertv.me:8080",
-      user: "F9nYwbIukJU5Zw",
-      pass: "A6XjAFurDBu3c2"
-    };
+    const SERVER_URL = "http://forevertv.me:8080";
+    const USERNAME   = "F9nYwbIukJU5Zw";
+    const PASSWORD   = "A6XjAFurDBu3c2";
 
-    const TMDb_API = "8265bd1679663a7ea12ac168da84d2e8";
-    const movieGrid = document.getElementById("movieGrid");
-    const playerModal = document.getElementById("cinemaPlayer");
-    const nativePlayer = document.getElementById("nativeVideoPlayer");
-    const currentFilmTitle = document.getElementById("currentFilmTitle");
+    const moviesGrid = document.getElementById("moviesGrid");
+    const playerModal = document.getElementById("playerModal");
+    const videoPlayer = document.getElementById("videoPlayer");
+    const playerTitle = document.getElementById("playerTitle");
 
-    let allFilms = [];
-    let topFilm = null;
+    let library = [];
 
-    // جلب الأفلام السينمائية وبوستراتها
-    async function loadCinema() {
+    async function loadMovies() {
       try {
-        const res = await fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${TMDb_API}&language=ar&page=1`);
+        const targetUrl = `${SERVER_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=get_vod_streams`;
+        const res = await fetch(`/api/stream?url=${encodeURIComponent(targetUrl)}`);
         const data = await res.json();
-        allFilms = data.results;
 
-        if (allFilms.length > 0) {
-          setupHero(allFilms[0]);
-          displayFilms(allFilms);
+        if (Array.isArray(data) && data.length > 0) {
+          library = data;
+          render(library);
+        } else {
+          moviesGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ef4444;">لم يتم العثور على أفلام في السيرفر.</div>`;
         }
       } catch (err) {
-        console.error("Error loading films:", err);
+        moviesGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ef4444;">تعذر تحميل القائمة. تأكد من رفع ملف api/stream.js المحدث.</div>`;
       }
     }
 
-    function setupHero(film) {
-      topFilm = film;
-      document.getElementById("heroTitle").innerText = film.title || film.name;
-      document.getElementById("heroRating").innerText = film.vote_average ? film.vote_average.toFixed(1) : "8.5";
-      document.getElementById("heroYear").innerText = (film.release_date || "2026").split("-")[0];
-      document.getElementById("heroDesc").innerText = film.overview || "فيلم حصري متوفر بأعلى جودة.";
-      document.getElementById("heroSection").style.backgroundImage = `linear-gradient(90deg, #0a0e17 25%, rgba(10,14,23,0.6) 60%, rgba(10,14,23,0.1) 100%), url('https://image.tmdb.org/t/p/original${film.backdrop_path}')`;
-    }
-
-    function displayFilms(films) {
-      movieGrid.innerHTML = "";
-      films.forEach(film => {
-        if (!film.poster_path) return;
+    function render(items) {
+      moviesGrid.innerHTML = "";
+      items.slice(0, 50).forEach(item => {
         const card = document.createElement("div");
-        card.className = "film-card";
-        card.onclick = () => startStreaming(film.title || film.name, film.id);
+        card.className = "movie-card";
+        
+        const ext = item.container_extension || "mp4";
+        const videoUrl = `${SERVER_URL}/movie/${USERNAME}/${PASSWORD}/${item.stream_id}.${ext}`;
+        const poster = item.stream_icon || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80";
+
+        card.onclick = () => playMovie(item.name, videoUrl);
 
         card.innerHTML = `
-          <div class="film-poster-wrap">
-            <span class="film-quality">HD 1080p</span>
-            <img src="https://image.tmdb.org/t/p/w500${film.poster_path}" class="film-poster" alt="${film.title}" loading="lazy">
+          <div class="poster-box">
+            <span class="quality-badge">${ext.toUpperCase()}</span>
+            <img src="${poster}" class="movie-poster" alt="${item.name}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80'">
           </div>
-          <div class="film-details">
-            <div class="film-name">${film.title || film.name}</div>
-            <div class="film-stats">
-              <span>${(film.release_date || "2026").split("-")[0]}</span>
-              <span style="color: var(--gold);"><i class="fa-solid fa-star"></i> ${film.vote_average ? film.vote_average.toFixed(1) : "N/A"}</span>
+          <div class="movie-info">
+            <div class="movie-title">${item.name}</div>
+            <div class="movie-meta">
+              <span style="color: var(--gold);">★ ${item.rating || '8.5'}</span>
+              <span style="color: #22c55e;">جاهز</span>
             </div>
           </div>
         `;
-        movieGrid.appendChild(card);
+        moviesGrid.appendChild(card);
       });
     }
 
-    function searchLibrary() {
-      const q = document.getElementById("movieSearch").value.toLowerCase();
-      const filtered = allFilms.filter(f => (f.title || f.name).toLowerCase().includes(q));
-      displayFilms(filtered);
+    function filterMovies() {
+      const q = document.getElementById("searchInput").value.toLowerCase();
+      render(library.filter(m => m.name.toLowerCase().includes(q)));
     }
 
-    // تشغيل الفيديو مباشرة داخل مشغل HTML5 الخاص بك دون أطراف ثالثة
-    function startStreaming(title, id) {
-      currentFilmTitle.innerText = "تشغيل: " + title;
-      // رابط البث المباشر (يمكنك ربطه برابط سيرفر Xtream VOD أو استضافتك)
-      // مثال لتشغيل ملف فيديو تجريبي أصلي مباشر بدون إعلانات:
-      nativePlayer.src = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-      
+    function playMovie(title, streamUrl) {
+      playerTitle.innerText = "مشاهدة: " + title;
+      // تشغيل الفيديو عبر البروكسي الداخلي
+      videoPlayer.src = `/api/stream?url=${encodeURIComponent(streamUrl)}`;
       playerModal.classList.add("active");
-      nativePlayer.play();
+      videoPlayer.play().catch(() => {});
     }
 
-    function playHeroMovie() {
-      if (topFilm) startStreaming(topFilm.title, topFilm.id);
-    }
-
-    function stopPlayer() {
-      nativePlayer.pause();
-      nativePlayer.src = "";
+    function closePlayer() {
+      videoPlayer.pause();
+      videoPlayer.src = "";
       playerModal.classList.remove("active");
     }
 
-    loadCinema();
+    loadMovies();
   </script>
 </body>
 </html>
