@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>منصة بث المباريات المباشرة</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
+  <title>سينما بلس - أفلام ومسلسلات</title>
   <style>
     * {
       box-sizing: border-box;
@@ -13,321 +12,255 @@
       font-family: system-ui, -apple-system, sans-serif;
     }
     body {
-      background-color: #070d18;
+      background-color: #0b0f19;
       color: #ffffff;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
+    }
+    header {
+      background-color: #0f172a;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      min-height: 100vh;
-      padding: 16px;
+      border-bottom: 1px solid #1e293b;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .logo {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #e11d48;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .search-box {
+      position: relative;
+      width: 50%;
+      max-width: 400px;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 10px 16px;
+      border-radius: 20px;
+      border: 1px solid #334155;
+      background-color: #1e293b;
+      color: #fff;
+      outline: none;
     }
     .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
       width: 100%;
-      max-width: 800px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+      flex: 1;
     }
-    .top-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 4px;
-    }
-    .live-badge {
-      background-color: #ef4444;
-      color: #ffffff;
-      font-weight: 800;
-      font-size: 0.75rem;
-      padding: 3px 8px;
-      border-radius: 4px;
-    }
-    .app-title {
-      font-size: 1.2rem;
-      font-weight: 800;
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 16px;
       color: #38bdf8;
     }
-    .player-container {
-      position: relative;
-      width: 100%;
-      padding-top: 56.25%;
-      background-color: #000000;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1px solid #1e293b;
+    .movies-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 16px;
     }
-    video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-    .status-box {
-      background-color: #0f172a;
-      border: 1px solid #1e293b;
+    .movie-card {
+      background-color: #1e293b;
       border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
+      border: 1px solid transparent;
+      display: flex;
+      flex-direction: column;
+    }
+    .movie-card:hover {
+      transform: translateY(-4px);
+      border-color: #e11d48;
+    }
+    .movie-poster {
+      width: 100%;
+      height: 240px;
+      object-fit: cover;
+      background-color: #0f172a;
+    }
+    .movie-info {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+    .movie-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .movie-rating {
+      font-size: 0.75rem;
+      color: #facc15;
+    }
+    /* واجهة المشغل المنبثق */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal.active {
+      display: flex;
+    }
+    .modal-content {
+      background-color: #0f172a;
+      width: 100%;
+      max-width: 900px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #334155;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
       padding: 12px 16px;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #38bdf8;
-    }
-    .channels-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .channel-item {
-      background-color: #0f172a;
-      color: #e2e8f0;
-      border: 1px solid #1e293b;
-      padding: 14px 18px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.95rem;
-      display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: background-color 0.2s;
-    }
-    .channel-item:hover {
       background-color: #1e293b;
     }
-    .channel-item.active {
-      background-color: #0284c7;
-      border-color: #38bdf8;
-      color: #ffffff;
+    .close-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+    .player-frame {
+      width: 100%;
+      height: 500px;
+      border: none;
+      background-color: #000;
     }
   </style>
 </head>
 <body>
 
+  <header>
+    <div class="logo">🎬 CINEMA PLUS</div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="ابحث عن فيلم أو مسلسل..." oninput="handleSearch()">
+    </div>
+  </header>
+
   <div class="container">
-    <div class="top-bar">
-      <span class="live-badge">LIVE</span>
-      <div class="app-title">LIVE SPORT TV 📡</div>
-    </div>
+    <div class="section-title" id="sectionHeading">أحدث الأفلام الرائجة 🔥</div>
+    <div class="movies-grid" id="moviesGrid"></div>
+  </div>
 
-    <div class="player-container">
-      <video id="videoPlayer" controls playsinline></video>
-    </div>
-
-    <div class="status-box">
-      <span id="currentStatus">جاري تجهيز البث...</span>
-      <span style="color: #22c55e;">● متصل</span>
-    </div>
-
-    <div class="channels-list">
-      <button class="channel-item active" onclick="playChannel('/api/stream?url=' + encodeURIComponent('http://185.191.126.127:8080/live/b0:99:d7:15:88:50/3090914536649669/6123.m3u8'), 'قناة beIN Sports 1 (سيرفر Xtream)', this)">
-        <span>beIN Sports 1 HD</span>
-        <span>◀</span>
-      </button>
-
-      <button class="channel-item" onclick="playChannel('/api/stream?url=' + encodeURIComponent('http://forevertv.me:8080/live/F9nYwbIukJU5Zw/A6XjAFurDBu3c2/6123.m3u8'), 'قناة beIN Sports (سيرفر Forever)', this)">
-        <span>beIN Sports (سيرفر 2)</span>
-        <span>◀</span>
-      </button>
+  <!-- مشغل الفيديو -->
+  <div class="modal" id="playerModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span id="playerTitle" style="font-weight: 700;">مشغل الفيديو</span>
+        <button class="close-btn" onclick="closePlayer()">&times;</button>
+      </div>
+      <iframe id="videoFrame" class="player-frame" allowfullscreen></iframe>
     </div>
   </div>
 
   <script>
-    const video = document.getElementById('videoPlayer');
-    const statusText = document.getElementById('currentStatus');
-    let hls = null;
+    const API_KEY = "8265bd1679663a7ea12ac168da84d2e8"; // مفتاح TMDb تجريبي مدمج
+    const BASE_URL = "https://api.themoviedb.org/3";
+    const IMG_URL = "https://image.tmdb.org/t/p/w500";
 
-    function playChannel(url, name, btn) {
-      if (btn) {
-        document.querySelectorAll('.channel-item').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-      }
-      statusText.innerText = "جاري تشغيل: " + name;
+    const moviesGrid = document.getElementById("moviesGrid");
+    const playerModal = document.getElementById("playerModal");
+    const videoFrame = document.getElementById("videoFrame");
+    const playerTitle = document.getElementById("playerTitle");
+    const sectionHeading = document.getElementById("sectionHeading");
 
-      if (Hls.isSupported()) {
-        if (hls) hls.destroy();
-        hls = new Hls({ enableWorker: true, lowLatencyMode: true });
-        hls.loadSource(url);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          statusText.innerText = "يعمل الآن: " + name;
-          video.play().catch(e => console.log(e));
-        });
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
-            console.error("HLS Error:", data);
-            statusText.innerText = "خطأ في الاتصال بالسيرفر، جرب سيرفر آخر";
-          }
-        });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = url;
-        video.addEventListener('loadedmetadata', () => {
-          statusText.innerText = "يعمل الآن: " + name;
-          video.play().catch(() => {});
-        });
+    // جلب الأفلام الرائجة عند فتح الموقع
+    async function fetchTrendingMovies() {
+      try {
+        const res = await fetch(`${BASE_URL}/trending/movie/day?api_key=${API_KEY}&language=ar`);
+        const data = await res.json();
+        renderMovies(data.results);
+      } catch (err) {
+        console.error("Error fetching movies:", err);
       }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const activeBtn = document.querySelector('.channel-item.active');
-      if (activeBtn) activeBtn.click();
-    });
-  </script>
-</body>
-</html>
-    .live-badge {
-      background-color: #ef4444;
-      color: #ffffff;
-      font-weight: 800;
-      font-size: 0.75rem;
-      padding: 3px 8px;
-      border-radius: 4px;
-    }
-    .app-title {
-      font-size: 1.2rem;
-      font-weight: 800;
-      color: #38bdf8;
-    }
-    .player-container {
-      position: relative;
-      width: 100%;
-      padding-top: 56.25%;
-      background-color: #000000;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1px solid #1e293b;
-    }
-    video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-    .status-box {
-      background-color: #0f172a;
-      border: 1px solid #1e293b;
-      border-radius: 10px;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #38bdf8;
-    }
-    .channels-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .channel-item {
-      background-color: #0f172a;
-      color: #e2e8f0;
-      border: 1px solid #1e293b;
-      padding: 14px 18px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.95rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: background-color 0.2s;
-    }
-    .channel-item:hover {
-      background-color: #1e293b;
-    }
-    .channel-item.active {
-      background-color: #0284c7;
-      border-color: #38bdf8;
-      color: #ffffff;
-    }
-  </style>
-</head>
-<body>
+    // عرض كروت الأفلام
+    function renderMovies(movies) {
+      moviesGrid.innerHTML = "";
+      movies.forEach(movie => {
+        if (!movie.poster_path) return;
 
-  <div class="container">
-    <div class="top-bar">
-      <span class="live-badge">LIVE</span>
-      <div class="app-title">LIVE SPORT TV 📡</div>
-    </div>
+        const card = document.createElement("div");
+        card.className = "movie-card";
+        card.onclick = () => openPlayer(movie.id, movie.title || movie.name);
 
-    <div class="player-container">
-      <video id="videoPlayer" controls playsinline></video>
-    </div>
+        card.innerHTML = `
+          <img src="${IMG_URL + movie.poster_path}" class="movie-poster" alt="${movie.title}" loading="lazy">
+          <div class="movie-info">
+            <div class="movie-title">${movie.title || movie.name}</div>
+            <div class="movie-rating">★ ${movie.vote_average ? movie.vote_average.toFixed(1) : "N/A"}</div>
+          </div>
+        `;
+        moviesGrid.appendChild(card);
+      });
+    }
 
-    <div class="status-box">
-      <span id="currentStatus">جاري تجهيز البث...</span>
-      <span style="color: #22c55e;">● متصل</span>
-    </div>
+    // البحث عن الأفلام
+    let searchTimeout;
+    function handleSearch() {
+      clearTimeout(searchTimeout);
+      const query = document.getElementById("searchInput").value.trim();
 
-    <div class="channels-list">
-      <!-- القناة 1 (المعرف 6123) -->
-      <button class="channel-item active" onclick="playChannel('/api/stream?url=' + encodeURIComponent('http://213.183.40.59/iptv/8DNEYEKGDK3SKVGLNPWNEP9Q/6123/mono.m3u8'), 'قناة beIN Sports 1 HD', this)">
-        <span>beIN Sports 1 HD</span>
-        <span>◀</span>
-      </button>
-
-      <!-- القناة 2 (المعرف 6131) -->
-      <button class="channel-item" onclick="playChannel('/api/stream?url=' + encodeURIComponent('http://5.182.228.251/iptv/8DNEYEKGDK3SKVGLNPWNEP9Q/6131/mono.m3u8'), 'قناة beIN Sports 2 HD', this)">
-        <span>beIN Sports 2 HD</span>
-        <span>◀</span>
-      </button>
-    </div>
-  </div>
-
-  <script>
-    const video = document.getElementById('videoPlayer');
-    const statusText = document.getElementById('currentStatus');
-    let hls = null;
-
-    function playChannel(url, name, btn) {
-      if (btn) {
-        document.querySelectorAll('.channel-item').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+      if (!query) {
+        sectionHeading.innerText = "أحدث الأفلام الرائجة 🔥";
+        fetchTrendingMovies();
+        return;
       }
-      statusText.innerText = "جاري تشغيل: " + name;
 
-      if (Hls.isSupported()) {
-        if (hls) {
-          hls.destroy();
+      searchTimeout = setTimeout(async () => {
+        sectionHeading.innerText = `نتائج البحث عن: ${query}`;
+        try {
+          const res = await fetch(`${BASE_URL}/search/multi?api_key=${API_KEY}&language=ar&query=${encodeURIComponent(query)}`);
+          const data = await res.json();
+          renderMovies(data.results);
+        } catch (err) {
+          console.error("Search error:", err);
         }
-        hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true
-        });
-        hls.loadSource(url);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          statusText.innerText = "يعمل الآن: " + name;
-          video.play().catch(e => console.log("Autoplay blocked:", e));
-        });
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
-            console.error("HLS Error:", data);
-            statusText.innerText = "خطأ في الاتصال بالسيرفر";
-          }
-        });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = url;
-        video.addEventListener('loadedmetadata', () => {
-          statusText.innerText = "يعمل الآن: " + name;
-          video.play().catch(() => {});
-        });
-      }
+      }, 500);
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const activeBtn = document.querySelector('.channel-item.active');
-      if (activeBtn) {
-        activeBtn.click();
-      }
-    });
+    // فتح المشغل باستخدام سيرفرات التضمين المباشرة
+    function openPlayer(id, title) {
+      playerTitle.innerText = "مشاهدة: " + title;
+      // سيرفر التضمين السحابي
+      videoFrame.src = `https://vidsrc.to/embed/movie/${id}`;
+      playerModal.classList.add("active");
+    }
+
+    // إغلاق المشغل
+    function closePlayer() {
+      videoFrame.src = "";
+      playerModal.classList.remove("active");
+    }
+
+    // بدء التشغيل
+    fetchTrendingMovies();
   </script>
 </body>
 </html>
