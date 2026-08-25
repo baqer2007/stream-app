@@ -4,29 +4,35 @@ export default async function handler(req, res) {
     return res.status(400).send('Missing url parameter');
   }
 
+  const customHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 14; HEY2-W09 Build/HONORHEY2-W09; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/150.0.7871.184 Safari/537.36 Vinebre',
+    'X-Requested-With': 'kid.tv',
+    'Referer': 'http://localhost/',
+    'Accept': '*/*'
+  };
+
   try {
+    // تتبع الـ 302 Redirect تلقائياً وجلب الرابط النهائي
     const response = await fetch(targetUrl, {
-      headers: {
-        'User-Agent': 'kid.tv/9.8 (Linux;Android 14) AndroidXMedia3/1.1.1',
-        'Accept': '*/*',
-        'Connection': 'keep-alive'
-      }
+      headers: customHeaders,
+      redirect: 'follow'
     });
 
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
 
+    const finalUrl = response.url;
     const contentType = response.headers.get('content-type') || '';
 
-    // معالجة ملفات القائمة m3u8 وإعادة كتابة مسارات قطع الفيديو لتمر عبر البروكسي
-    if (targetUrl.includes('.m3u8') || contentType.includes('mpegurl') || contentType.includes('application/vnd.apple.mpegurl')) {
+    // معالجة ملفات القوائم m3u8
+    if (finalUrl.includes('.m3u8') || targetUrl.includes('.m3u8') || contentType.includes('mpegurl')) {
       const text = await response.text();
-      const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
+      const baseUrl = finalUrl.substring(0, finalUrl.lastIndexOf('/') + 1);
 
       const modifiedPlaylist = text.split('\n').map(line => {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('#')) return line;
-        
+
         let fullSegmentUrl = trimmed;
         if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
           fullSegmentUrl = baseUrl + trimmed;
