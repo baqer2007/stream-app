@@ -1,55 +1,58 @@
 export default async function handler(req, res) {
   const targetUrl = req.query.url;
   if (!targetUrl) {
-    return res.status(400).send('Missing url parameter');
+    return res.status(400).send('Missing url');
   }
 
-  const customHeaders = {
-    'User-Agent': 'Mozilla/5.0 (Linux; Android 14; HEY2-W09 Build/HONORHEY2-W09; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/150.0.7871.184 Safari/537.36 Vinebre',
-    'X-Requested-With': 'kid.tv',
-    'Referer': 'http://localhost/',
-    'Accept': '*/*'
-  };
+  // دعم استعلامات الـ Preflight CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
   try {
-    // تتبع الـ 302 Redirect تلقائياً وجلب الرابط النهائي
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 14; HEY2-W09) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+      'Accept': '*/*',
+      'Connection': 'keep-alive'
+    };
+
+    // تمرير الـ Range لدعم تقديم وتأخير الفيديو في المتصفح
+    if (req.headers.range) {
+      headers['Range'] = req.headers.range;
+    }
+
     const response = await fetch(targetUrl, {
-      headers: customHeaders,
+      headers,
       redirect: 'follow'
     });
 
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-
-    const finalUrl = response.url;
     const contentType = response.headers.get('content-type') || '';
 
-    // معالجة ملفات القوائم m3u8
-    if (finalUrl.includes('.m3u8') || targetUrl.includes('.m3u8') || contentType.includes('mpegurl')) {
-      const text = await response.text();
-      const baseUrl = finalUrl.substring(0, finalUrl.lastIndexOf('/') + 1);
-
-      const modifiedPlaylist = text.split('\n').map(line => {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('#')) return line;
-
-        let fullSegmentUrl = trimmed;
-        if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
-          fullSegmentUrl = baseUrl + trimmed;
-        }
-        return `/api/stream?url=${encodeURIComponent(fullSegmentUrl)}`;
-      }).join('\n');
-
-      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-      return res.send(modifiedPlaylist);
+    // معالجة استجابات الـ JSON (بيانات السيرفر والأفلام)
+    if (contentType.includes('json') || targetUrl.includes('player_api.php')) {
+      const data = await response.text();
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(response.status).send(data);
     }
 
-    // تمرير قطع الفيديو المباشرة (.ts)
-    const arrayBuf = await response.arrayBuffer();
-    res.setHeader('Content-Type', 'video/MP2T');
-    return res.send(Buffer.from(arrayBuf));
+    // تمرير بيانات الفيديو والـ Headers الأساسية
+    res.setHeader('Content-Type', contentType || 'video/mp4');
+    if (response.headers.get('content-range')) {
+      res.setHeader('Content-Range', response.headers.get('content-range'));
+    }
+    if (response.headers.get('content-length')) {
+      res.setHeader('Content-Length', response.headers.get('content-length'));
+    }
+    res.setHeader('Accept-Ranges', 'bytes');
 
-  } catch (err) {
-    return res.status(500).send(err.message);
+    const arrayBuffer = await response.arrayBuffer();
+    return res.status(response.status).send(Buffer.from(arrayBuffer));
+
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 }
